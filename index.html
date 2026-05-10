@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🇻🇳 Vietnam Travel Planner – November</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',Arial,sans-serif; background:#0a1628; color:#e8f0fe; height:100vh; display:flex; flex-direction:column; }
+
+  /* ── HEADER ── */
+  #header {
+    background:linear-gradient(135deg,#c8102e 0%,#da251d 50%,#f9c912 100%);
+    padding:10px 18px; display:flex; align-items:center; gap:14px; flex-shrink:0;
+    box-shadow:0 2px 12px rgba(0,0,0,0.5);
+  }
+  #header h1 { font-size:1.25rem; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.4); }
+  #header p { font-size:0.78rem; color:rgba(255,255,255,0.88); margin-top:1px; }
+  .flag { font-size:2rem; }
+
+  /* ── LAYOUT ── */
+  html, body { height:100%; }
+  #main { display:flex; flex:1; overflow:hidden; min-height:0; }
+  #sidebar {
+    width:320px; min-width:260px; background:#0d1f3c; display:flex; flex-direction:column;
+    border-right:1px solid #1e3a5f; overflow:hidden; flex-shrink:0;
+  }
+  #map-wrap { flex:1; position:relative; }
+  #map { position:absolute; top:0; left:0; right:0; bottom:0; }
+
+  /* ── TABS ── */
+  .tabs { display:flex; background:#091529; border-bottom:1px solid #1e3a5f; }
+  .tab {
+    flex:1; padding:8px 4px; font-size:0.72rem; font-weight:600; cursor:pointer;
+    text-align:center; color:#6b8cba; border-bottom:2px solid transparent;
+    transition:all .2s; letter-spacing:.3px; text-transform:uppercase;
+  }
+  .tab.active { color:#f9c912; border-bottom-color:#f9c912; background:#0d1f3c; }
+  .tab:hover:not(.active) { color:#9bb8da; background:#0f2340; }
+
+  /* ── FILTERS ── */
+  #filter-panel { padding:12px; border-bottom:1px solid #1e3a5f; }
+  #filter-panel h3 { font-size:0.7rem; color:#6b8cba; text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px; }
+  .filter-row { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:6px; }
+  .chip {
+    padding:4px 10px; border-radius:20px; font-size:0.68rem; cursor:pointer; font-weight:600;
+    border:1px solid transparent; transition:all .18s; user-select:none;
+  }
+  .chip.active { box-shadow:0 0 0 2px rgba(249,201,18,0.5); }
+
+  /* City chips */
+  .chip-city { background:#1a2f50; color:#9bb8da; border-color:#2a4070; }
+  .chip-city.active { background:#c8102e; color:#fff; border-color:#c8102e; }
+
+  /* Type chips */
+  .chip-type { background:#1a2f50; color:#9bb8da; border-color:#2a4070; }
+  .chip-type.active { background:#2e7d52; color:#fff; border-color:#2e7d52; }
+
+  /* Priority chips */
+  .chip-priority { background:#1a2f50; color:#9bb8da; border-color:#2a4070; }
+  .chip-priority.active { background:#7b4a10; color:#f9c912; border-color:#c87020; }
+
+  /* ── ROUTE PANEL ── */
+  #route-panel { padding:12px; border-bottom:1px solid #1e3a5f; }
+  #route-panel h3 { font-size:0.7rem; color:#6b8cba; text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px; }
+  .route-btns { display:flex; gap:6px; margin-bottom:8px; }
+  .route-btn {
+    flex:1; padding:6px 8px; border-radius:6px; font-size:0.72rem; font-weight:700; cursor:pointer;
+    border:2px solid transparent; text-align:center; transition:all .2s;
+  }
+  .route-btn-my { background:#2a2000; color:#FFD700; border-color:#2a2000; }
+  .route-btn-my.active { background:#3d2e00; color:#FFD700; border-color:#FFD700; box-shadow:0 0 8px #FFD70066; }
+  .route-btn-14 { background:#1e3a5f; color:#4fc3f7; border-color:#1e3a5f; }
+  .route-btn-14.active { background:#0d47a1; color:#fff; border-color:#4fc3f7; }
+  .route-btn-17 { background:#1e3a5f; color:#ce93d8; border-color:#1e3a5f; }
+  .route-btn-17.active { background:#4a148c; color:#fff; border-color:#ce93d8; }
+  .route-btn-off { background:#1e3a5f; color:#6b8cba; border-color:#1e3a5f; }
+  .route-btn-off.active { background:#263238; color:#90a4ae; border-color:#90a4ae; }
+
+  #day-nav { display:none; align-items:center; gap:6px; }
+  #day-nav.visible { display:flex; }
+  #day-nav button {
+    background:#1e3a5f; border:none; color:#9bb8da; width:26px; height:26px;
+    border-radius:4px; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center;
+  }
+  #day-nav button:hover { background:#2a4f7c; }
+  #day-label { flex:1; text-align:center; font-size:0.75rem; font-weight:700; color:#f9c912; }
+
+  /* ── PLACE LIST ── */
+  #list-panel { flex:1; overflow-y:auto; padding:8px; }
+  #list-panel::-webkit-scrollbar { width:5px; }
+  #list-panel::-webkit-scrollbar-track { background:#091529; }
+  #list-panel::-webkit-scrollbar-thumb { background:#2a4070; border-radius:3px; }
+
+  .place-item {
+    padding:8px 10px; margin-bottom:4px; border-radius:7px; cursor:pointer;
+    border-left:3px solid transparent; background:#122040; transition:all .15s;
+    display:flex; align-items:flex-start; gap:7px;
+  }
+  .place-item:hover { background:#1a3060; transform:translateX(2px); }
+  .place-item.highlighted { background:#1e3a5f; border-left-color:#f9c912; }
+  .place-icon { font-size:1.1rem; margin-top:1px; flex-shrink:0; }
+  .place-info { flex:1; min-width:0; }
+  .place-name { font-size:0.78rem; font-weight:600; color:#cde; line-height:1.3; }
+  .place-meta { font-size:0.67rem; color:#6b8cba; margin-top:2px; }
+  .place-city { font-size:0.65rem; padding:1px 5px; border-radius:3px; display:inline-block; margin-right:3px; font-weight:600; }
+  .badge-must { background:#c8102e22; color:#ff6b6b; border:1px solid #c8102e44; }
+  .badge-rec { background:#2e7d5222; color:#66bb6a; border:1px solid #2e7d5244; }
+  .badge-gem { background:#f9c91222; color:#f9c912; border:1px solid #f9c91244; }
+
+  /* ── WEATHER/STATS TAB ── */
+  #weather-tab-content { padding:10px; overflow-y:auto; display:none; }
+  #weather-tab-content.visible { display:block; }
+  #list-tab-content { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  #list-tab-content.hidden { display:none; }
+
+  .weather-card {
+    background:#122040; border-radius:8px; padding:10px 12px; margin-bottom:7px;
+    border-left:3px solid #1e3a5f;
+  }
+  .weather-city { font-size:0.8rem; font-weight:700; color:#cde; }
+  .weather-rating { font-size:0.68rem; margin:3px 0; }
+  .weather-temp { font-size:0.68rem; color:#6b8cba; }
+  .weather-note { font-size:0.65rem; color:#8aa8c8; margin-top:4px; line-height:1.4; }
+  .rating-excellent { color:#66bb6a; }
+  .rating-good { color:#f9c912; }
+  .rating-fair { color:#ffa726; }
+  .rating-poor { color:#ef5350; }
+
+  /* ── COUNT BAR ── */
+  #count-bar {
+    padding:6px 12px; background:#091529; border-top:1px solid #1e3a5f;
+    font-size:0.68rem; color:#6b8cba; display:flex; gap:10px; flex-shrink:0;
+  }
+  #count-bar span { color:#9bb8da; font-weight:600; }
+
+  /* ── MAP POPUP STYLING ── */
+  .leaflet-popup-content-wrapper {
+    background:#0d1f3c; color:#e8f0fe; border:1px solid #2a4f7c;
+    border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,0.7);
+  }
+  .leaflet-popup-tip { background:#0d1f3c; }
+  .leaflet-popup-content { margin:12px 14px; font-size:0.82rem; min-width:200px; max-width:280px; }
+  .popup-title { font-size:0.95rem; font-weight:700; color:#f9c912; margin-bottom:6px; line-height:1.3; }
+  .popup-city { font-size:0.7rem; padding:2px 7px; border-radius:12px; background:#c8102e; color:#fff; display:inline-block; margin-bottom:6px; font-weight:600; }
+  .popup-desc { font-size:0.75rem; color:#9bb8da; line-height:1.5; margin:5px 0; }
+  .popup-tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:7px; }
+  .popup-tag { font-size:0.65rem; padding:2px 7px; border-radius:10px; font-weight:600; }
+  .tag-type { background:#1e3a5f; color:#4fc3f7; }
+  .tag-priority { background:#c8102e33; color:#ff6b6b; }
+  .tag-gem { background:#f9c91222; color:#f9c912; }
+  .tag-dur { background:#2e7d5222; color:#66bb6a; }
+  .tag-weather { background:#1a2f50; color:#90caf9; }
+  .popup-food-tag { font-size:0.65rem; padding:2px 7px; border-radius:10px; background:#4a148c33; color:#ce93d8; font-weight:600; }
+
+  /* ── ROUTE INFO BOX ── */
+  #route-info {
+    position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
+    background:rgba(255,255,255,0.95); border:1px solid #ddd; border-radius:10px;
+    padding:10px 16px; z-index:1000; max-width:520px; width:90%;
+    display:none; box-shadow:0 4px 20px rgba(0,0,0,0.2);
+  }
+  #route-info h4 { font-size:0.82rem; font-weight:700; color:#c8102e; margin-bottom:4px; }
+  #route-info .ri-cities { font-size:0.75rem; color:#333; line-height:1.6; }
+  #route-info .ri-tip { font-size:0.7rem; color:#2e7d52; margin-top:5px; }
+  #route-info.visible { display:block; }
+
+  /* City label markers */
+  .city-label {
+    background:rgba(255,255,255,0.88); color:#c8102e; font-weight:700; font-size:0.7rem;
+    padding:3px 8px; border-radius:12px; border:1px solid #c8102e55; white-space:nowrap;
+    box-shadow:0 1px 4px rgba(0,0,0,0.2);
+  }
+
+  /* ── LEGEND ── */
+  #legend {
+    position:absolute; top:10px; right:10px; z-index:1000;
+    background:rgba(255,255,255,0.93); border:1px solid #ddd; border-radius:10px;
+    padding:10px 13px; min-width:150px; box-shadow:0 2px 10px rgba(0,0,0,0.15);
+  }
+  #legend h4 { font-size:0.68rem; color:#555; text-transform:uppercase; letter-spacing:.6px; margin-bottom:7px; }
+  .legend-item { display:flex; align-items:center; gap:7px; margin-bottom:5px; font-size:0.7rem; color:#333; }
+  .legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+  .legend-line { width:20px; height:3px; border-radius:2px; flex-shrink:0; }
+
+  /* ── SEARCH ── */
+  #search-wrap { padding:8px 12px; border-bottom:1px solid #1e3a5f; flex-shrink:0; }
+  #search-input {
+    width:100%; padding:6px 10px; border-radius:6px; border:1px solid #2a4f7c;
+    background:#122040; color:#e8f0fe; font-size:0.75rem; outline:none;
+  }
+  #search-input::placeholder { color:#4a6080; }
+  #search-input:focus { border-color:#4fc3f7; }
+
+  /* Scrollbar for weather */
+  #weather-tab-content::-webkit-scrollbar { width:5px; }
+  #weather-tab-content::-webkit-scrollbar-track { background:#091529; }
+  #weather-tab-content::-webkit-scrollbar-thumb { background:#2a4070; border-radius:3px; }
+
+  .no-results { text-align:center; color:#4a6080; font-size:0.75rem; padding:24px 12px; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="flag">🇻🇳</div>
+  <div>
+    <h1>Vietnam Travel Planner – November</h1>
+    <p>Interactive map · 103 attractions & food spots · 14 & 17-day itineraries</p>
+  </div>
+</div>
+
+<div id="main">
+
+  <!-- ── SIDEBAR ── -->
+  <div id="sidebar">
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" id="tab-places" onclick="switchTab('places')">Places</div>
+      <div class="tab" id="tab-routes" onclick="switchTab('routes')">Routes</div>
+      <div class="tab" id="tab-weather" onclick="switchTab('weather')">Weather</div>
+    </div>
+
+    <!-- Places tab -->
+    <div id="list-tab-content">
+      <!-- Search -->
+      <div id="search-wrap">
+        <input type="text" id="search-input" placeholder="🔍  Search places, food, cities…" oninput="applyFilters()">
+      </div>
+
+      <!-- Filters -->
+      <div id="filter-panel">
+        <h3>Filter by city</h3>
+        <div class="filter-row" id="city-chips"></div>
+        <h3 style="margin-top:6px">Type</h3>
+        <div class="filter-row" id="type-chips"></div>
+        <h3 style="margin-top:6px">Priority</h3>
+        <div class="filter-row" id="priority-chips"></div>
+      </div>
+
+      <!-- Route panel embedded inside places tab -->
+      <div id="route-panel">
+        <h3>Itinerary route</h3>
+        <div class="route-btns">
+          <div class="route-btn route-btn-my" id="btn-my" onclick="toggleRoute('my')" style="flex:1.3">⭐ My Trip</div>
+          <div class="route-btn route-btn-14" id="btn-14" onclick="toggleRoute(14)">14-Day</div>
+          <div class="route-btn route-btn-17" id="btn-17" onclick="toggleRoute(17)">17-Day</div>
+          <div class="route-btn route-btn-off active" id="btn-off" onclick="toggleRoute(0)">Off</div>
+        </div>
+        <div id="day-nav">
+          <button onclick="changeDay(-1)">‹</button>
+          <div id="day-label">Day 1</div>
+          <button onclick="changeDay(1)">›</button>
+        </div>
+      </div>
+
+      <!-- List -->
+      <div id="list-panel"></div>
+      <div id="count-bar">
+        Showing <span id="count-num">0</span> places
+      </div>
+    </div>
+
+    <!-- Weather tab -->
+    <div id="weather-tab-content">
+      <!-- filled by JS -->
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- ── MAP ── -->
+  <div id="map-wrap">
+    <div id="map"></div>
+
+    <!-- Legend -->
+    <div id="legend">
+      <h4>Legend</h4>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff6b6b"></div>Sightseeing</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4fc3f7"></div>Activity</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff9800"></div>Food – Non-Veg</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#66bb6a"></div>Food – Vegetarian</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ce93d8"></div>Nightlife / Market</div>
+      <div class="legend-item" style="margin-top:6px"><div class="legend-line" style="background:#FFD700"></div>⭐ My Trip</div>
+      <div class="legend-item"><div class="legend-line" style="background:#4fc3f7"></div>14-Day route</div>
+      <div class="legend-item"><div class="legend-line" style="background:#ce93d8"></div>17-Day route</div>
+    </div>
+
+    <!-- Route info box -->
+    <div id="route-info">
+      <h4 id="ri-title"></h4>
+      <div class="ri-cities" id="ri-cities"></div>
+      <div class="ri-tip" id="ri-tip"></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════════════════════
+
+const CITIES = {
+  "Hanoi":          { lat:21.0285, lng:105.8542, region:"North" },
+  "Ha Long Bay":    { lat:20.9101, lng:107.1839, region:"North" },
+  "Ninh Binh":      { lat:20.2506, lng:105.9745, region:"North" },
+  "Sapa":           { lat:22.3364, lng:103.8438, region:"North" },
+  "Hue":            { lat:16.4637, lng:107.5909, region:"Central" },
+  "Hoi An":         { lat:15.8801, lng:108.3380, region:"Central" },
+  "Da Nang":        { lat:16.0471, lng:108.2068, region:"Central" },
+  "Nha Trang":      { lat:12.2388, lng:109.1967, region:"South" },
+  "Ho Chi Minh City": { lat:10.7769, lng:106.7009, region:"South" },
+  "Mekong Delta":   { lat:10.0341, lng:105.7878, region:"South" },
+  "Phu Quoc":       { lat:10.2899, lng:103.9840, region:"South" },
+  "Ba Na Hills":    { lat:15.9973, lng:107.9843, region:"Central" }
+};
+
+const WEATHER = [
+  { city:"Hanoi",        temp:"20–26°C", rain:"Low",       humidity:"Low",       rating:"Excellent", note:"Best month to visit Hanoi. Cool, dry and comfortable." },
+  { city:"Ha Long Bay",  temp:"22–26°C", rain:"Low–Mod",   humidity:"Low–Mod",   rating:"Good",      note:"Occasional mist adds mystique. Seas generally calm." },
+  { city:"Ninh Binh",    temp:"22–26°C", rain:"Low",       humidity:"Low",       rating:"Excellent", note:"Dry season – golden rice paddies. Ideal conditions." },
+  { city:"Sapa",         temp:"10–18°C", rain:"Low",       humidity:"Moderate",  rating:"Good",      note:"Cold at altitude. Bring warm layers. Clear views some days." },
+  { city:"Hue",          temp:"22–28°C", rain:"Very High", humidity:"High",      rating:"Fair",      note:"Hue's wettest month. Flooding possible. Plan indoor alternatives." },
+  { city:"Hoi An",       temp:"24–28°C", rain:"High",      humidity:"High",      rating:"Fair",      note:"Flooding risk in Old Town. Check forecasts daily. Late Nov improves." },
+  { city:"Da Nang",      temp:"24–28°C", rain:"High",      humidity:"Moderate",  rating:"Fair",      note:"Wetter than usual but fewer extreme flood risks than Hue/Hoi An." },
+  { city:"Nha Trang",    temp:"24–28°C", rain:"Low",       humidity:"Moderate",  rating:"Excellent", note:"Dry season begins. Great for beach & water sports." },
+  { city:"Ho Chi Minh City", temp:"27–32°C", rain:"Low",   humidity:"Low",       rating:"Excellent", note:"End of rainy season. Getting drier. Hot and sunny." },
+  { city:"Mekong Delta", temp:"26–32°C", rain:"Low",       humidity:"Low",       rating:"Excellent", note:"Season transitioning – still lush but drying out. Excellent boat trips." },
+  { city:"Phu Quoc",     temp:"26–30°C", rain:"Low",       humidity:"Low",       rating:"Excellent", note:"Peak season! Best beaches in Vietnam in November. Book ahead!" }
+];
+
+// Approximate per-place coords (offset from city center so they don't stack)
+const PLACES = [
+  // ── HANOI ──
+  { city:"Hanoi", name:"Hoan Kiem Lake & Ngoc Son Temple", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"1–2h", cost:"Free", lat:21.0285, lng:105.8516, desc:"Iconic lake in the heart of the city. The red Huc Bridge and Turtle Tower are unmissable. Best walked at dawn or dusk.", weather:"Mild 20–25°C, perfect walking weather." },
+  { city:"Hanoi", name:"Old Quarter 36 Streets Walk", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"2–3h", cost:"Free", lat:21.0340, lng:105.8490, desc:"Each street historically sold one craft. Wander Hang Dao, Hang Bac, Hang Ma for souvenirs, silk & paper lanterns.", weather:"Comfortable cool weather ideal for street walking." },
+  { city:"Hanoi", name:"Ho Chi Minh Mausoleum & Complex", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"2–3h", cost:"Low", lat:21.0368, lng:105.8346, desc:"Enormous complex with mausoleum, presidential palace, stilt house & Ho Chi Minh Museum. Respectful dress required.", weather:"Open most days. Arrive early to avoid queues." },
+  { city:"Hanoi", name:"Temple of Literature (Van Mieu)", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"1–2h", cost:"Low", lat:21.0237, lng:105.8357, desc:"Vietnam's first university (1070 AD). Beautiful courtyards with stone turtle steles bearing scholars' names.", weather:"Cool dry weather – great for photography." },
+  { city:"Hanoi", name:"Hoa Lo Prison (Hanoi Hilton)", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:false, dur:"1–2h", cost:"Low", lat:21.0273, lng:105.8468, desc:"Sobering colonial-era prison used by French then during Vietnam War. Informative exhibits, central location.", weather:"Indoor attraction – weather irrelevant." },
+  { city:"Hanoi", name:"Vietnam Museum of Ethnology", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:false, dur:"2–3h", cost:"Low", lat:21.0354, lng:105.8038, desc:"World-class museum covering 54 ethnic groups. Outdoor section has full-scale traditional houses.", weather:"Great indoor/outdoor combo. Nov is dry season here." },
+  { city:"Hanoi", name:"West Lake (Ho Tay) Sunset", type:"Sightseeing", cat:"Nature", priority:"Recommended", gem:false, dur:"1–2h", cost:"Free", lat:21.0545, lng:105.8310, desc:"Largest lake in Hanoi. Stunning sunset views. Cafe-lined shores. Great cycling route.", weather:"Beautiful in cool November light." },
+  { city:"Hanoi", name:"Dong Xuan Market", type:"Sightseeing", cat:"Shopping", priority:"Recommended", gem:false, dur:"1h", cost:"Low", lat:21.0376, lng:105.8481, desc:"Hanoi's oldest and largest covered market. Three floors of goods from clothing to fresh produce.", weather:"Indoor – great rainy day option." },
+  { city:"Hanoi", name:"Train Street (Phung Hung)", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:true, dur:"1h", cost:"Free", lat:21.0320, lng:105.8445, desc:"Narrow alley where a live train passes within inches of café tables. Check train times – usually twice daily.", weather:"Any weather works; covered cafés alongside." },
+  { city:"Hanoi", name:"Bat Trang Ceramic Village", type:"Activity", cat:"Culture", priority:"Recommended", gem:true, dur:"3–4h", cost:"Low", lat:20.9880, lng:105.9040, desc:"Riverside ceramic village 15 km from Hanoi. Watch potters work, paint your own pot, buy quality ceramics direct.", weather:"Half-day trip – good in Nov dry weather." },
+  { city:"Hanoi", name:"Quan An Ngon", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"1h", cost:"Mid", lat:21.0261, lng:105.8468, desc:"Landmark restaurant serving street-food classics in a gorgeous villa courtyard. Pho, bun cha, banh xeo all excellent.", weather:"✅ Open all year" },
+  { city:"Hanoi", name:"Bun Cha Huong Lien (Obama's Bun Cha)", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"1h", cost:"Low", lat:21.0310, lng:105.8434, desc:"Made famous by Anthony Bourdain & Obama visit. Grilled pork patties with vermicelli noodles & herbs.", weather:"✅ Open all year" },
+  { city:"Hanoi", name:"Pho Gia Truyen (Pho Bo)", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:21.0355, lng:105.8476, desc:"One of Hanoi's most celebrated pho spots. Beef broth simmered overnight; opens early, sells out by 9 AM.", weather:"✅ Open early morning only" },
+  { city:"Hanoi", name:"Chay Garden (Vegetarian)", type:"Food – Vegetarian", cat:"Food", priority:"Must-See", gem:false, dur:"1h", cost:"Mid", lat:21.0299, lng:105.8493, desc:"Beautiful garden restaurant in Old Quarter serving creative Vietnamese Buddhist vegetarian cuisine.", weather:"✅ Open all year" },
+  { city:"Hanoi", name:"Tamarind Café (Vegetarian)", type:"Food – Vegetarian", cat:"Food", priority:"Recommended", gem:false, dur:"1h", cost:"Low-Mid", lat:21.0331, lng:105.8488, desc:"Popular veg-friendly café with tofu dishes, spring rolls, pumpkin soup. Great for both veg & non-veg.", weather:"✅ Open all year" },
+  { city:"Hanoi", name:"Egg Coffee at Café Giang", type:"Food – Vegetarian", cat:"Food", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:21.0349, lng:105.8502, desc:"Invented in 1946. Whipped egg yolk over strong Vietnamese drip coffee – a Hanoi icon. Must try!", weather:"✅ Open all year" },
+  { city:"Hanoi", name:"Bun Bo Nam Bo (Vegetarian-Friendly)", type:"Food – Vegetarian", cat:"Food", priority:"Recommended", gem:false, dur:"0.5h", cost:"Low", lat:21.0321, lng:105.8511, desc:"Dry beef noodle bowl with fried shallots & herbs. Can be ordered vegetarian. Famous street stall.", weather:"✅ Open all year" },
+
+  // ── HA LONG BAY ──
+  { city:"Ha Long Bay", name:"Ha Long Bay Cruise (2D/1N)", type:"Activity", cat:"Nature", priority:"Must-See", gem:false, dur:"2 days", cost:"High", lat:20.9101, lng:107.1839, desc:"Overnight junk boat cruise among 1,969 limestone karst islands. Kayaking, cave exploring, fishing village visit.", weather:"Nov: calm seas, fewer crowds, misty morning views." },
+  { city:"Ha Long Bay", name:"Sung Sot Cave (Surprise Cave)", type:"Sightseeing", cat:"Nature", priority:"Must-See", gem:false, dur:"1.5h", cost:"Low", lat:20.8879, lng:107.0925, desc:"Ha Long's largest cave – two chambers of extraordinary stalactite formations. Most visited cave in the bay.", weather:"Indoor – always accessible." },
+  { city:"Ha Long Bay", name:"Kayaking Among Karsts", type:"Activity", cat:"Adventure", priority:"Must-See", gem:false, dur:"2–3h", cost:"Mid", lat:20.9200, lng:107.1600, desc:"Paddle through hidden lagoons and sea caves only accessible by kayak. Best at low tide.", weather:"Nov: calm waters – ideal kayaking conditions." },
+  { city:"Ha Long Bay", name:"Lan Ha Bay (Hidden Alternative)", type:"Activity", cat:"Nature", priority:"Recommended", gem:true, dur:"Full day", cost:"Mid", lat:20.7500, lng:107.0500, desc:"Less crowded southern section of the bay. Cleaner water, better snorkelling, authentic floating villages.", weather:"Nov: excellent visibility." },
+  { city:"Ha Long Bay", name:"Ti Top Island & Beach", type:"Activity", cat:"Beach", priority:"Recommended", gem:false, dur:"2h", cost:"Low", lat:20.9023, lng:107.1245, desc:"Tiny island with a sweeping panoramic viewpoint (400 steps) and a small white-sand beach below.", weather:"Nov: cool for the climb, good views." },
+  { city:"Ha Long Bay", name:"Floating Fishing Village (Cua Van)", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:true, dur:"2h", cost:"Low", lat:20.8600, lng:107.0800, desc:"One of the largest floating villages in Ha Long Bay. Row boat tour through the village lanes.", weather:"Nov: calm enough to visit year-round." },
+
+  // ── NINH BINH ──
+  { city:"Ninh Binh", name:"Trang An Boat Trip", type:"Activity", cat:"Nature", priority:"Must-See", gem:false, dur:"3h", cost:"Low-Mid", lat:20.2506, lng:105.9400, desc:"UNESCO World Heritage boat journey through karst caves and rice paddy valleys. Three caves, one route.", weather:"Nov: golden rice paddies. Perfect conditions." },
+  { city:"Ninh Binh", name:"Hang Mua Peak (Dragon Mountain)", type:"Activity", cat:"Nature", priority:"Must-See", gem:false, dur:"2h", cost:"Low", lat:20.2400, lng:105.9250, desc:"500-step climb up the dragon-shaped staircase. Panoramic views over the Tam Coc valley and rice fields.", weather:"Nov: clear skies for spectacular photos." },
+  { city:"Ninh Binh", name:"Bich Dong Pagoda (3-level cave temple)", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:true, dur:"1.5h", cost:"Free", lat:20.2350, lng:105.9150, desc:"Three Buddhist temples built inside a series of cave chambers in a limestone cliff. Fascinating architecture.", weather:"Nov: dry – steps not slippery." },
+  { city:"Ninh Binh", name:"Hoa Lu Ancient Capital", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:false, dur:"1.5h", cost:"Low", lat:20.2800, lng:105.9600, desc:"Vietnam's ancient capital (10th century). Two temples dedicated to Dinh Tien Hoang and Le Dai Hanh.", weather:"Nov: comfortable for exploring temple grounds." },
+  { city:"Ninh Binh", name:"Cycling Through Tam Coc Villages", type:"Activity", cat:"Nature", priority:"Recommended", gem:true, dur:"2–3h", cost:"Low", lat:20.2450, lng:105.9350, desc:"Flat cycling route through rice paddies, alongside the Ngo Dong River. Rent bikes for ~50,000 VND.", weather:"Nov: golden harvest season. Photogenic." },
+  { city:"Ninh Binh", name:"Goat Meat (Thit De) – Local Specialty", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"1h", cost:"Low", lat:20.2506, lng:105.9745, desc:"Ninh Binh's most famous dish. Grilled, steam, or hot-pot goat served with rice wine. Try Thanh Thuy restaurant.", weather:"✅ Year-round specialty" },
+
+  // ── HUE ──
+  { city:"Hue", name:"Imperial Citadel & Forbidden Purple City", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"3–4h", cost:"Low", lat:16.4701, lng:107.5779, desc:"Vast walled complex housing the last Vietnamese royal dynasty. Some areas still under reconstruction. Stunning gates and moats.", weather:"⚠️ Nov: rainiest month. Bring umbrella. Many covered areas." },
+  { city:"Hue", name:"Royal Tombs (Minh Mang, Tu Duc, Khai Dinh)", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"3–4h", cost:"Low", lat:16.4210, lng:107.5790, desc:"Three elaborate royal tombs outside the city – each with distinct architecture. Khai Dinh is the most dramatic.", weather:"⚠️ Nov: rain likely. Tombs are spread out – hire a driver." },
+  { city:"Hue", name:"Thien Mu Pagoda", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:false, dur:"1h", cost:"Free", lat:16.4518, lng:107.5530, desc:"Vietnam's tallest pagoda (21 m, 7 levels) overlooking the Perfume River. Spiritual atmosphere, ancient bell.", weather:"Nov: accessible but check rain for boat approach." },
+  { city:"Hue", name:"Perfume River Boat Ride", type:"Activity", cat:"Culture", priority:"Recommended", gem:false, dur:"2h", cost:"Low-Mid", lat:16.4637, lng:107.5750, desc:"Dragon boat ride along the Perfume River past pagodas and tombs. Sunset cruises especially beautiful.", weather:"Nov: possible rain – choose covered boat." },
+  { city:"Hue", name:"Dong Ba Market", type:"Sightseeing", cat:"Shopping", priority:"Recommended", gem:false, dur:"1h", cost:"Free", lat:16.4694, lng:107.5887, desc:"Hue's largest market. Ground floor for fresh produce and local specialties. Upper floors for clothing and textiles.", weather:"Indoor market – great for rainy days." },
+  { city:"Hue", name:"Bun Bo Hue (Spicy Beef Noodle Soup)", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:16.4637, lng:107.5930, desc:"Hue's signature dish – spicy lemongrass-scented broth with thick noodles, beef and pork. Better here than anywhere.", weather:"✅ Perfect comfort food for rainy days" },
+  { city:"Hue", name:"Banh Khoai (Crispy Hue Pancake)", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:16.4600, lng:107.5920, desc:"Sizzling rice-flour pancake filled with shrimp, pork and bean sprouts. Smaller and crispier than banh xeo.", weather:"✅ Available year-round" },
+  { city:"Hue", name:"Com Hen (Baby Clam Rice)", type:"Food – Non-Veg", cat:"Food", priority:"Recommended", gem:true, dur:"0.5h", cost:"Low", lat:16.4550, lng:107.5900, desc:"Tiny baby clams from the Perfume River served cold over rice with herbs and crispy rice crackers. Unique to Hue.", weather:"✅ Available year-round" },
+  { city:"Hue", name:"Hue Vegetarian Cuisine (Chay)", type:"Food – Vegetarian", cat:"Food", priority:"Must-See", gem:false, dur:"1h", cost:"Low", lat:16.4637, lng:107.5860, desc:"Hue has Vietnam's best Buddhist vegetarian tradition. Try Lien Hoa or any chay restaurant near the citadel.", weather:"✅ Available year-round" },
+
+  // ── HOI AN ──
+  { city:"Hoi An", name:"Ancient Town Night Walk", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"2–3h", cost:"Low", lat:15.8801, lng:108.3380, desc:"UNESCO World Heritage site glowing with hundreds of silk lanterns at night. Most magical 6–10 PM on full moon.", weather:"⚠️ Nov: flood risk early in month. Check water levels." },
+  { city:"Hoi An", name:"Japanese Covered Bridge", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:15.8775, lng:108.3278, desc:"18th-century bridge built by Japanese merchants – Hoi An's most iconic symbol. Worth seeing at dawn.", weather:"⚠️ Can flood in early Nov. Check conditions." },
+  { city:"Hoi An", name:"Tailoring & Custom Clothing", type:"Activity", cat:"Shopping", priority:"Must-See", gem:false, dur:"Multi-day", cost:"Mid", lat:15.8810, lng:108.3360, desc:"Get a custom suit, dress or ao dai made in 24–48 hours. Book on Day 1, collect Day 2. Many tailors on Tran Phu St.", weather:"Nov: good time to order – town less crowded." },
+  { city:"Hoi An", name:"Cooking Class (Red Bridge or Morning Glory)", type:"Activity", cat:"Food", priority:"Must-See", gem:false, dur:"3–4h", cost:"Mid", lat:15.8820, lng:108.3440, desc:"Learn to make cao lau, white rose dumplings, banh mi and fresh rolls. Red Bridge includes boat ride to school.", weather:"Nov: classes run year-round, indoor kitchen." },
+  { city:"Hoi An", name:"An Bang Beach", type:"Activity", cat:"Beach", priority:"Recommended", gem:false, dur:"Half day", cost:"Free", lat:15.9100, lng:108.3580, desc:"Quieter beach 3 km from Old Town. Local restaurants, fewer tourists than Da Nang's My Khe. Bike or grab-taxi.", weather:"⚠️ Nov: rough surf – swimming risky." },
+  { city:"Hoi An", name:"Bicycle Ride to Tra Que Herb Village", type:"Activity", cat:"Nature", priority:"Recommended", gem:true, dur:"2–3h", cost:"Low", lat:15.8920, lng:108.3280, desc:"Cycle 3 km to a traditional herb-growing village. Guided tours let you help with planting and harvest.", weather:"Nov: dry weather makes cycling pleasant." },
+  { city:"Hoi An", name:"My Son Sanctuary (Cham Ruins)", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:false, dur:"3–4h", cost:"Low-Mid", lat:15.7631, lng:108.1195, desc:"UNESCO-listed 4th–13th century Hindu temple complex in jungle valley. 70 km from Hoi An – half day trip.", weather:"⚠️ Nov: access road can flood. Check conditions." },
+  { city:"Hoi An", name:"Lantern Making Workshop", type:"Activity", cat:"Culture", priority:"Recommended", gem:true, dur:"1.5h", cost:"Low", lat:15.8800, lng:108.3370, desc:"Make your own silk lantern to take home. Many workshops in the Old Town; try Reach Out Art & Crafts.", weather:"Indoor – good rainy day option." },
+  { city:"Hoi An", name:"White Rose Dumplings (Banh Bao Vac)", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:15.8810, lng:108.3390, desc:"Delicate shrimp dumplings folded to look like white roses. Unique to Hoi An – only one family makes the wrappers.", weather:"✅ Available year-round" },
+  { city:"Hoi An", name:"Cao Lau Noodles", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:15.8795, lng:108.3360, desc:"Thick noodles with pork, herbs and crispy crackers. Can only be made with water from Hoi An's ancient wells.", weather:"✅ Available year-round" },
+  { city:"Hoi An", name:"Banh Mi Phuong", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:15.8790, lng:108.3350, desc:"Anthony Bourdain called it the best banh mi in the world. Queue early, around 2–3 PM peak fresh bake time.", weather:"✅ Open 6:30 AM–7 PM" },
+  { city:"Hoi An", name:"Morning Glory Restaurant (Veg Options)", type:"Food – Vegetarian", cat:"Food", priority:"Must-See", gem:false, dur:"1h", cost:"Mid", lat:15.8805, lng:108.3375, desc:"By cooking class chef Ms Vy. Extensive vegetarian options. Cooking school showcases local ingredients beautifully.", weather:"✅ Open year-round" },
+  { city:"Hoi An", name:"Streets Restaurant Bakery & Bar (Veg)", type:"Food – Vegetarian", cat:"Food", priority:"Recommended", gem:false, dur:"1h", cost:"Low-Mid", lat:15.8815, lng:108.3355, desc:"Social enterprise restaurant training disadvantaged youth. Great vegetarian options and excellent baked goods.", weather:"✅ Open year-round" },
+
+  // ── DA NANG ──
+  { city:"Da Nang", name:"Ba Na Hills & Golden Bridge", type:"Activity", cat:"Nature", priority:"Recommended", gem:false, dur:"Full day", cost:"High", lat:15.9973, lng:107.9843, desc:"Cable car up to hilltop theme park. The giant stone-hand Golden Bridge is an Instagram icon. Skip if foggy.", weather:"⚠️ Nov: often foggy – waste of money in clouds. Check forecast." },
+  { city:"Da Nang", name:"Marble Mountains (Ngu Hanh Son)", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"2–3h", cost:"Low", lat:16.0022, lng:108.2626, desc:"Five marble and limestone hills with ancient caves, temples and pagodas. Take the elevator up. Views over Da Nang.", weather:"Nov: good visibility on clear days." },
+  { city:"Da Nang", name:"My Khe Beach", type:"Activity", cat:"Beach", priority:"Recommended", gem:false, dur:"2h", cost:"Free", lat:16.0600, lng:108.2480, desc:"Long white sand beach close to the city. Forbes listed it as one of the most beautiful beaches in Asia.", weather:"⚠️ Nov: rough surf from northeast monsoon. No swimming." },
+  { city:"Da Nang", name:"Dragon Bridge (Weekend Fire Show)", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"1h", cost:"Free", lat:16.0619, lng:108.2274, desc:"582 m bridge shaped like a dragon. Breathes fire and water Saturday & Sunday at 9 PM. Walk across any night.", weather:"Outdoor – check rain. Fire show runs regardless." },
+  { city:"Da Nang", name:"Museum of Cham Sculpture", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:false, dur:"1.5h", cost:"Low", lat:16.0621, lng:108.2218, desc:"World's largest collection of Cham sculptures (200–1700 AD). Excellent context for visiting My Son.", weather:"Indoor – perfect rainy day option." },
+  { city:"Da Nang", name:"Han Market", type:"Sightseeing", cat:"Shopping", priority:"Recommended", gem:false, dur:"1h", cost:"Free", lat:16.0635, lng:108.2198, desc:"Da Nang's central market with fresh produce, seafood, clothing and souvenirs. More local than tourist markets.", weather:"Indoor – open year-round." },
+  { city:"Da Nang", name:"Mi Quang Noodles (Da Nang Specialty)", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:16.0580, lng:108.2200, desc:"Turmeric-yellow noodles with shrimp, pork, quail eggs, herbs and crispy rice crackers. Mi Quang 1A is the classic spot.", weather:"✅ Available year-round" },
+  { city:"Da Nang", name:"Be Man (Seafood BBQ)", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"1.5h", cost:"Mid", lat:16.0640, lng:108.2490, desc:"Legendary beach-side seafood BBQ. Grilled prawns, clams, scallops and squid at plastic tables on the sand.", weather:"✅ Best in dry evenings. Has covered seating." },
+  { city:"Da Nang", name:"Madame Lan (Vegetarian-Friendly)", type:"Food – Vegetarian", cat:"Food", priority:"Recommended", gem:false, dur:"1h", cost:"Mid", lat:16.0600, lng:108.2230, desc:"Upscale Vietnamese restaurant with strong vegetarian section. Central Hoi An classics done well in Da Nang.", weather:"✅ Air-conditioned indoor dining" },
+
+  // ── NHA TRANG ──
+  { city:"Nha Trang", name:"Snorkelling / Diving Hon Mun Marine Park", type:"Activity", cat:"Adventure", priority:"Must-See", gem:false, dur:"Full day", cost:"Mid", lat:12.1700, lng:109.2900, desc:"Vietnam's most biodiverse marine protected area. Colourful coral reefs, sea turtles, tropical fish. Book a boat tour.", weather:"☀️ Nov: dry season. Best visibility for diving." },
+  { city:"Nha Trang", name:"Po Nagar Cham Towers", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"1.5h", cost:"Low", lat:12.2652, lng:109.1938, desc:"Still-active Hindu temple complex built by the Cham kingdom (8th–13th century). Four towers on a hilltop.", weather:"Nov: dry season – perfect outdoor visiting." },
+  { city:"Nha Trang", name:"Long Son Pagoda & Giant White Buddha", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:false, dur:"1h", cost:"Free", lat:12.2490, lng:109.1760, desc:"152 large seated Buddha on a hilltop overlooking Nha Trang. Free to visit. Steep climb rewarded with panoramas.", weather:"Nov: dry and clear. 150 steps – bring water." },
+  { city:"Nha Trang", name:"Nha Trang Beach", type:"Activity", cat:"Beach", priority:"Must-See", gem:false, dur:"Half day", cost:"Free", lat:12.2388, lng:109.1967, desc:"6 km of white sand right in the city. Beach clubs, water sports, massage services. Promenade walk at sunset.", weather:"☀️ Nov: excellent – dry season peak." },
+  { city:"Nha Trang", name:"Hon Tre Island (Vinpearl)", type:"Activity", cat:"Adventure", priority:"Recommended", gem:false, dur:"Full day", cost:"High", lat:12.2000, lng:109.2600, desc:"Large island reached by the world's longest over-water cable car. Theme park, water park, aquarium.", weather:"☀️ Nov: good visibility across the bay." },
+  { city:"Nha Trang", name:"Mud Bath at Thap Ba Hot Springs", type:"Activity", cat:"Wellness", priority:"Recommended", gem:true, dur:"2–3h", cost:"Low-Mid", lat:12.2600, lng:109.1600, desc:"Unique volcanic mud bath experience – float effortlessly in communal mud pools, then mineral hot spring pools.", weather:"☀️ Nov: perfect outdoor spa weather." },
+  { city:"Nha Trang", name:"Doc Let Beach (Hidden)", type:"Activity", cat:"Beach", priority:"Recommended", gem:true, dur:"Half day", cost:"Low", lat:12.4600, lng:109.2200, desc:"Pristine, under-visited beach 50 km north of Nha Trang. Shallow turquoise water, no crowds. Worth the drive.", weather:"☀️ Nov: outstanding conditions." },
+  { city:"Nha Trang", name:"Seafood at Dam Market", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"1h", cost:"Low-Mid", lat:12.2430, lng:109.1900, desc:"Nha Trang's main market. Buy fresh seafood downstairs, take upstairs to be cooked or find BBQ restaurants outside.", weather:"✅ Open daily" },
+  { city:"Nha Trang", name:"Bun Ca Nha Trang (Fish Noodle Soup)", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:12.2450, lng:109.1920, desc:"Nha Trang's signature breakfast – fish cake and noodle soup with lemongrass and chilli. Try local stalls near the beach.", weather:"✅ Breakfast only, 6–10 AM" },
+  { city:"Nha Trang", name:"Truc Lam Vien Vegetarian Restaurant", type:"Food – Vegetarian", cat:"Food", priority:"Recommended", gem:false, dur:"1h", cost:"Low", lat:12.2420, lng:109.1880, desc:"Popular veg restaurant serving creative plant-based Vietnamese dishes. Mock meats and fresh tofu dishes.", weather:"✅ Open year-round" },
+
+  // ── HO CHI MINH CITY ──
+  { city:"Ho Chi Minh City", name:"War Remnants Museum", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"2–3h", cost:"Low", lat:10.7793, lng:106.6919, desc:"Powerful, harrowing museum documenting the Vietnam War from the Vietnamese perspective. Photography exhibits, aircraft and tanks outside.", weather:"☀️ Nov: excellent – outdoor areas enjoyable." },
+  { city:"Ho Chi Minh City", name:"Cu Chi Tunnels", type:"Activity", cat:"Culture", priority:"Must-See", gem:false, dur:"Half day", cost:"Low-Mid", lat:11.1409, lng:106.4616, desc:"Vast underground tunnel network used by Viet Cong guerrillas. Crawl through narrow passages, see booby traps and bunkers.", weather:"☀️ Nov: hot but mostly dry. Bring water." },
+  { city:"Ho Chi Minh City", name:"Reunification Palace", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"1.5h", cost:"Low", lat:10.7766, lng:106.6956, desc:"Iconic building where the Vietnam War ended in 1975. Original furnishings intact – like stepping into a time capsule.", weather:"Nov: comfortable with A/C inside." },
+  { city:"Ho Chi Minh City", name:"Notre-Dame Cathedral & Central Post Office", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:false, dur:"1h", cost:"Free", lat:10.7797, lng:106.6990, desc:"French colonial twin-towered cathedral (1880) and the magnificent Gustave Eiffel-designed post office next door.", weather:"Nov: outdoor architecture – light rain possible." },
+  { city:"Ho Chi Minh City", name:"Ben Thanh Market", type:"Sightseeing", cat:"Shopping", priority:"Must-See", gem:false, dur:"1–2h", cost:"Low", lat:10.7721, lng:106.6982, desc:"HCMC's most famous market. Food, souvenirs, clothing, spices. Night market extension outside from 6 PM.", weather:"Indoor – open daily. Night market weather-dependent." },
+  { city:"Ho Chi Minh City", name:"Bui Vien Walking Street (Night)", type:"Activity", cat:"Nightlife", priority:"Recommended", gem:false, dur:"2–3h", cost:"Low", lat:10.7663, lng:106.6917, desc:"Backpacker party street that comes alive after 8 PM. Neon signs, live music, cheap beer, street food.", weather:"☀️ Nov: dry evenings – perfect for outdoor drinking." },
+  { city:"Ho Chi Minh City", name:"Pho Le (District 11 Landmark)", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:10.7580, lng:106.6680, desc:"Legendary pho restaurant operating since the 1970s in Chinatown. Huge bowls of clear beef broth with rich flavour.", weather:"✅ Opens 6 AM – sells out by lunch" },
+  { city:"Ho Chi Minh City", name:"Banh Mi Huynh Hoa", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:10.7650, lng:106.6940, desc:"Consistently voted HCMC's best banh mi. Stuffed with 8 ingredients. Queue from 3 PM when they open – sells out.", weather:"✅ Opens 3 PM only – short window" },
+  { city:"Ho Chi Minh City", name:"Goi Cuon (Fresh Spring Rolls) Everywhere", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:10.7769, lng:106.7009, desc:"HCMC's street snack: translucent rice paper rolls with shrimp, pork, vermicelli, herbs. Ask for vegetarian version.", weather:"✅ Available city-wide" },
+  { city:"Ho Chi Minh City", name:"Hum Vegetarian Café & Restaurant", type:"Food – Vegetarian", cat:"Food", priority:"Must-See", gem:false, dur:"1h", cost:"Mid", lat:10.7830, lng:106.7010, desc:"HCMC's most upscale and atmospheric vegetarian restaurant. Creative dishes in a leafy colonial villa.", weather:"✅ Open year-round – make a reservation" },
+  { city:"Ho Chi Minh City", name:"Loving Hut (Vegetarian Chain)", type:"Food – Vegetarian", cat:"Food", priority:"Recommended", gem:false, dur:"0.5h", cost:"Low", lat:10.7710, lng:106.6960, desc:"International vegan chain with strong Vietnamese presence. Inexpensive, reliable, multiple branches across HCMC.", weather:"✅ Multiple locations open daily" },
+  { city:"Ho Chi Minh City", name:"Che Dessert Street Stalls", type:"Food – Vegetarian", cat:"Food", priority:"Recommended", gem:false, dur:"0.5h", cost:"Low", lat:10.7730, lng:106.6980, desc:"Vietnamese sweet dessert soups and drinks. Beans, jellies, coconut milk, shaved ice. Try near Ben Thanh Market.", weather:"☀️ Nov: perfect weather for cold desserts." },
+  { city:"Ho Chi Minh City", name:"Binh Tay Market (Cho Lon, Chinatown)", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:true, dur:"1–2h", cost:"Free", lat:10.7518, lng:106.6519, desc:"HCMC's Chinatown wholesale market. More local than Ben Thanh, less touristy. Dragon Gate architecture. Great photos.", weather:"Indoor – accessible in any weather." },
+
+  // ── MEKONG DELTA ──
+  { city:"Mekong Delta", name:"My Tho & Ben Tre Boat Tour", type:"Activity", cat:"Nature", priority:"Must-See", gem:false, dur:"Full day", cost:"Low-Mid", lat:10.3600, lng:106.3600, desc:"Boat through narrow canals lined with coconut palms. Visit candy & rice wine factories, hear traditional music.", weather:"☀️ Nov: dry season – clear skies and flat water." },
+  { city:"Mekong Delta", name:"Floating Markets (Cai Rang, Can Tho)", type:"Sightseeing", cat:"Culture", priority:"Must-See", gem:false, dur:"3h", cost:"Low", lat:10.0341, lng:105.7878, desc:"Hundreds of boats trading fruit and vegetables on the water. Cai Rang is the biggest – go before 7 AM for peak activity.", weather:"☀️ Nov: great visibility at dawn." },
+  { city:"Mekong Delta", name:"Tra Su Cajuput Forest", type:"Activity", cat:"Nature", priority:"Must-See", gem:true, dur:"3h", cost:"Low", lat:10.6700, lng:105.0800, desc:"Flooded forest ecosystem near the Cambodian border. Paddle boats glide silently through lotus-filled channels. Birds everywhere.", weather:"☀️ Nov: water level still high – full experience." },
+  { city:"Mekong Delta", name:"Elephant Ear Fish (Ca Tai Tuong)", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"1h", cost:"Low", lat:10.0341, lng:105.7878, desc:"Whole fish deep-fried and served upright like an open book. Eat with rice paper, herbs and vermicelli wraps.", weather:"✅ Riverbank restaurants open year-round" },
+
+  // ── PHU QUOC ──
+  { city:"Phu Quoc", name:"Long Beach (Bai Truong)", type:"Activity", cat:"Beach", priority:"Must-See", gem:false, dur:"Half day", cost:"Free", lat:10.2900, lng:103.9600, desc:"20 km of white sand on the west coast. Sunset beach. Most resort development is here. Best beach walks.", weather:"☀️ Nov: PEAK SEASON! Perfect conditions." },
+  { city:"Phu Quoc", name:"Sao Beach (Bai Sao)", type:"Activity", cat:"Beach", priority:"Must-See", gem:false, dur:"Full day", cost:"Free", lat:10.1200, lng:104.0600, desc:"Voted one of Asia's top 10 beaches. Crystal-clear turquoise water, white powder sand, minimal development. 25 km south.", weather:"☀️ Nov: stunning. Calmer water than northern beaches." },
+  { city:"Phu Quoc", name:"Snorkelling at An Thoi Archipelago", type:"Activity", cat:"Adventure", priority:"Must-See", gem:false, dur:"Full day", cost:"Mid", lat:10.0300, lng:103.9900, desc:"18 small islands off the southern tip. Boat tour with snorkelling stops, visit Fingernail Island for white sand.", weather:"☀️ Nov: excellent water clarity. Best month for snorkelling." },
+  { city:"Phu Quoc", name:"Phu Quoc National Park Trekking", type:"Activity", cat:"Nature", priority:"Recommended", gem:false, dur:"3–4h", cost:"Low", lat:10.3600, lng:104.0000, desc:"Half the island is national park. Trek through dense jungle to waterfalls and viewpoints. Hire a local guide.", weather:"☀️ Nov: dry season begins – trails accessible." },
+  { city:"Phu Quoc", name:"Phu Quoc Night Market (Dinh Cau)", type:"Sightseeing", cat:"Food", priority:"Must-See", gem:false, dur:"2h", cost:"Low", lat:10.3360, lng:103.9590, desc:"Bustling evening market right on the sea. Skewers, grilled seafood, Vietnamese snacks, hammocks and beers.", weather:"☀️ Nov: beautiful warm evenings." },
+  { city:"Phu Quoc", name:"Fish Sauce Factory Tour", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:true, dur:"1h", cost:"Free", lat:10.3150, lng:103.9720, desc:"Phu Quoc fish sauce (nuoc mam) is the finest in Vietnam. Free tours of the ancient wooden barrel factories.", weather:"☀️ Nov: great weather for tours." },
+  { city:"Phu Quoc", name:"Stargazing at Ong Lang Beach", type:"Activity", cat:"Nature", priority:"Recommended", gem:true, dur:"2h", cost:"Free", lat:10.3700, lng:103.9350, desc:"Low-light beach on the less-developed west coast. On clear Nov nights, Milky Way visible. Bring a mat.", weather:"☀️ Nov: dry, clear skies – best stargazing month." },
+  { city:"Phu Quoc", name:"Pepper Crab & Seafood (Non-Veg)", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"1.5h", cost:"Mid", lat:10.3360, lng:103.9590, desc:"Phu Quoc black pepper is world-famous. Pepper crab at Dinh Cau Market is the island's signature meal.", weather:"✅ Open year-round" },
+  { city:"Phu Quoc", name:"Vegetarian at Ganesh Indian Restaurant", type:"Food – Vegetarian", cat:"Food", priority:"Recommended", gem:false, dur:"1h", cost:"Mid", lat:10.2900, lng:103.9600, desc:"Best vegetarian-friendly restaurant on the island. Indian curries and dal complement the otherwise seafood-heavy menu.", weather:"✅ Open year-round" },
+
+  // ── SAPA ──
+  { city:"Sapa", name:"Fansipan Mountain Trek or Cable Car", type:"Activity", cat:"Adventure", priority:"Must-See", gem:false, dur:"Full day", cost:"Mid-High", lat:22.3031, lng:103.7765, desc:"Vietnam's highest peak (3,143 m). Trek 2 days or take the cable car for summit views. Above cloud level on clear days.", weather:"⛅ Nov: cold 8–15°C at summit. Clear days magical; misty days common." },
+  { city:"Sapa", name:"Muong Hoa Valley Trek", type:"Activity", cat:"Nature", priority:"Must-See", gem:false, dur:"Full day", cost:"Low", lat:22.3200, lng:103.8700, desc:"Spectacular terraced rice fields (post-harvest gold in Nov) with ethnic minority villages. Hire H'mong guide.", weather:"⛅ Nov: terraces golden after harvest. Bring warm layers." },
+  { city:"Sapa", name:"Cat Cat Hmong Village", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:false, dur:"2–3h", cost:"Low", lat:22.3300, lng:103.8300, desc:"Closest H'mong village to Sapa town. Traditional costumes, weaving demonstrations, small waterfall. Tourist but accessible.", weather:"Nov: can be foggy. Cool 12–18°C." },
+  { city:"Sapa", name:"Ta Van & Giang Ta Chai Villages", type:"Sightseeing", cat:"Culture", priority:"Recommended", gem:true, dur:"Full day", cost:"Low", lat:22.2800, lng:103.8900, desc:"More authentic than Cat Cat. Trekking route connects two Giay and Red Dao villages through river valleys.", weather:"Nov: dry season – trail conditions good." },
+  { city:"Sapa", name:"Thac Bac (Silver Waterfall)", type:"Sightseeing", cat:"Nature", priority:"Recommended", gem:true, dur:"1h", cost:"Low", lat:22.3800, lng:103.7900, desc:"Dramatic 200 m waterfall on the road to Lai Chau. Still powerful in November. Stop on the way to Fansipan.", weather:"Nov: still strong flow but safer than rainy season." },
+  { city:"Sapa", name:"Grilled Pork & Corn (Thit Nuong)", type:"Food – Non-Veg", cat:"Food", priority:"Must-See", gem:false, dur:"0.5h", cost:"Low", lat:22.3364, lng:103.8438, desc:"H'mong market staple: char-grilled pork and corn over charcoal braziers on Sapa's streets. Eat it walking.", weather:"✅ Perfect cold-weather street food" },
+  { city:"Sapa", name:"Thang Co (Horse Meat Stew)", type:"Food – Non-Veg", cat:"Food", priority:"Recommended", gem:true, dur:"1h", cost:"Low", lat:22.3364, lng:103.8438, desc:"Traditional H'mong dish – horse meat slow-cooked in herbs and offal, served communally in a giant pot. Bac Ha Market.", weather:"✅ Available on market days (Sun at Bac Ha)" }
+];
+
+// ── 14-Day Itinerary ──
+const ROUTE_14 = [
+  { days:"Day 1–3",  city:"Ho Chi Minh City", lat:10.7769, lng:106.7009, color:"#4fc3f7",
+    mustdo:"War Remnants Museum, Cu Chi Tunnels, Reunification Palace, Ben Thanh Market, Bui Vien night walk",
+    food:"Banh Mi Huynh Hoa, Pho Le, Hum Vegetarian, Che dessert stalls",
+    weather:"☀️ Excellent – 30°C dry", tip:"Fly into HCMC. Book Cu Chi tour on arrival. Do War Museum on Day 2.",
+    skip:"Binh Tay Market if short on time" },
+  { days:"Day 4",    city:"Mekong Delta",    lat:10.0341, lng:105.7878, color:"#4fc3f7",
+    mustdo:"Cai Rang Floating Market (5 AM!), Tra Su Cajuput Forest boat ride",
+    food:"Elephant Ear Fish at riverside stalls",
+    weather:"☀️ Excellent", tip:"Day-trip or overnight from HCMC. Pre-book floating market boat.",
+    skip:"Skip if you prefer more beach time" },
+  { days:"Day 5–7",  city:"Phu Quoc",        lat:10.2899, lng:103.9840, color:"#4fc3f7",
+    mustdo:"Sao Beach, An Thoi snorkelling, Phu Quoc Night Market, Ong Lang stargazing, Fish Sauce factory",
+    food:"Pepper Crab at Dinh Cau Market, Ganesh Indian for veg",
+    weather:"☀️ Excellent – PEAK SEASON!", tip:"Fly HCMC → Phu Quoc. Best beaches in Vietnam in November!",
+    skip:"Vinpearl if on a budget" },
+  { days:"Day 8–9",  city:"Nha Trang",       lat:12.2388, lng:109.1967, color:"#4fc3f7",
+    mustdo:"Hon Mun snorkelling/diving, Po Nagar Cham Towers, Thap Ba Mud Bath, Nha Trang Beach",
+    food:"Bun Ca Nha Trang (breakfast), Dam Market seafood BBQ, Truc Lam Vien veg",
+    weather:"☀️ Excellent – dry season", tip:"Fly Phu Quoc → Nha Trang. Arrange snorkelling on Day 8 morning.",
+    skip:"Long Son Pagoda if tight on time" },
+  { days:"Day 10",   city:"Da Nang",         lat:16.0471, lng:108.2068, color:"#4fc3f7",
+    mustdo:"Marble Mountains (morning), Dragon Bridge fire show (Sat/Sun 9 PM)",
+    food:"Mi Quang 1A noodles (lunch), Be Man seafood (dinner)",
+    weather:"⛅ Fair – some rain possible", tip:"Short flight or overnight bus. Skip Ba Na Hills if cloudy.",
+    skip:"My Khe beach swim – Nov surf too rough" },
+  { days:"Day 11–12",city:"Hoi An",          lat:15.8801, lng:108.3380, color:"#4fc3f7",
+    mustdo:"Ancient Town lantern walk, Cooking class, Custom tailoring, Tra Que herb village cycle",
+    food:"Banh Mi Phuong, White Rose dumplings, Cao Lau noodles, Morning Glory veg",
+    weather:"⚠️ Fair – flood risk early Nov", tip:"Stay in Old Town. Check flood levels before booking. Late Nov is safer.",
+    skip:"My Son if flooding – access road dangerous" },
+  { days:"Day 13",   city:"Ninh Binh",       lat:20.2506, lng:105.9745, color:"#4fc3f7",
+    mustdo:"Trang An boat trip, Hang Mua peak sunrise hike, rice field cycling",
+    food:"Thit De goat meat at Thanh Thuy restaurant",
+    weather:"☀️ Excellent", tip:"Overnight train Hoi An → Hanoi (~16 hrs), Day-trip to Ninh Binh.",
+    skip:"Hoa Lu if short on time" },
+  { days:"Day 14",   city:"Hanoi",           lat:21.0285, lng:105.8542, color:"#4fc3f7",
+    mustdo:"Hoan Kiem Lake, Old Quarter walk, Temple of Literature, Train Street",
+    food:"Egg Coffee at Café Giang, Pho Gia Truyen (6 AM!), Bun Cha Obama, Chay Garden veg",
+    weather:"☀️ Excellent – cool 22°C", tip:"Full final day in Hanoi. Night flight home or extend to Ha Long.",
+    skip:"Ho Chi Minh Mausoleum if queue is long" }
+];
+
+const ROUTE_17 = [
+  { days:"Day 1–3",  city:"Ho Chi Minh City", lat:10.7769, lng:106.7009, color:"#ce93d8",
+    mustdo:"War Remnants Museum, Cu Chi Tunnels, Reunification Palace, Ben Thanh, Bui Vien",
+    food:"Banh Mi Huynh Hoa, Pho Le, Hum Vegetarian",
+    weather:"☀️ Excellent", tip:"Same as 14-day start – HCMC is perfect in Nov.", extra:"Same as 14-day" },
+  { days:"Day 4",    city:"Mekong Delta",    lat:10.0341, lng:105.7878, color:"#ce93d8",
+    mustdo:"Cai Rang Floating Market (5 AM), Tra Su Cajuput Forest",
+    food:"Elephant Ear Fish at riverside",
+    weather:"☀️ Excellent", tip:"Overnight in Can Tho to catch 5 AM floating market properly.", extra:"Same as 14-day" },
+  { days:"Day 5–7",  city:"Phu Quoc",        lat:10.2899, lng:103.9840, color:"#ce93d8",
+    mustdo:"Sao Beach, An Thoi snorkelling, Night Market, Ong Lang stargazing, Fish Sauce tour",
+    food:"Pepper Crab, Ganesh for veg",
+    weather:"☀️ Excellent – PEAK", tip:"3 full days here – the beaches justify it in November!", extra:"Same as 14-day" },
+  { days:"Day 8–9",  city:"Nha Trang",       lat:12.2388, lng:109.1967, color:"#ce93d8",
+    mustdo:"Hon Mun diving, Po Nagar Towers, Mud Bath, Doc Let Beach day-trip (hidden gem!)",
+    food:"Bun Ca, Dam Market seafood, Truc Lam Vien veg",
+    weather:"☀️ Excellent", tip:"+Doc Let Beach added vs 14-day – worth the 50 km drive north.", extra:"➕ Doc Let Beach added" },
+  { days:"Day 10",   city:"Da Nang",         lat:16.0471, lng:108.2068, color:"#ce93d8",
+    mustdo:"Marble Mountains, Museum of Cham Sculpture, Dragon Bridge (Sat/Sun)",
+    food:"Mi Quang 1A, Be Man seafood",
+    weather:"⛅ Fair", tip:"Same as 14-day. Add Cham Museum if raining.", extra:"Same as 14-day" },
+  { days:"Day 11–12",city:"Hoi An",          lat:15.8801, lng:108.3380, color:"#ce93d8",
+    mustdo:"Ancient Town, Cooking class, Tailoring, Tra Que Village, Lantern Workshop",
+    food:"Banh Mi Phuong, White Rose, Cao Lau, Morning Glory, Streets Restaurant",
+    weather:"⚠️ Fair – check floods", tip:"Book tailor on Day 11 morning, collect garments Day 12 afternoon.", extra:"Same as 14-day" },
+  { days:"Day 13",   city:"Hue",             lat:16.4637, lng:107.5909, color:"#ce93d8",
+    mustdo:"Imperial Citadel, Khai Dinh Tomb, Thien Mu Pagoda, Dong Ba Market",
+    food:"Bun Bo Hue, Com Hen, Hue Chay veg",
+    weather:"⚠️ Fair – rainy", tip:"Short train Da Nang → Hue (2.5 hrs). Rainy but the history is worth one day.", extra:"➕ BONUS: Hue added" },
+  { days:"Day 14–15",city:"Ninh Binh + Hanoi",lat:20.2506,lng:105.9745, color:"#ce93d8",
+    mustdo:"Trang An boat, Hang Mua sunrise, Bich Dong Pagoda, Bat Trang ceramics",
+    food:"Thit De goat, Egg Coffee, Pho Gia Truyen, Bun Cha",
+    weather:"☀️ Excellent", tip:"Overnight train Hue → Hanoi. Day-trip Ninh Binh on Day 14, back to Hanoi evening.", extra:"➕ BONUS: Ninh Binh added" },
+  { days:"Day 16–17",city:"Ha Long Bay",     lat:20.9101, lng:107.1839, color:"#ce93d8",
+    mustdo:"2D/1N cruise: Sung Sot Cave, kayaking, floating village, Ti Top Island hike",
+    food:"All-inclusive on cruise boat",
+    weather:"🌤️ Good – some mist", tip:"Book a mid-range cruise (Paradise, Indochina Junk). Nov = calm seas, fewer crowds.", extra:"➕ BONUS: Ha Long Bay added" }
+];
+
+// ── My Trip (Custom 12-Day Itinerary) ──
+const ROUTE_MY = [
+  { days:"Day 1",    city:"Hanoi",         lat:21.0285, lng:105.8542, color:"#FFD700",
+    mustdo:"Rest & recover from flight. Easy stroll around Hoan Kiem Lake at dusk, grab egg coffee.",
+    food:"Egg Coffee at Café Giang, Pho Gia Truyen (light evening bowl)",
+    weather:"☀️ Excellent – cool 22°C", tip:"Arrive early, check in, rest. Don't over-plan Day 1.",
+    skip:"Heavy sightseeing – save energy for Sapa" },
+  { days:"Days 2–3", city:"Sapa",          lat:22.3364, lng:103.8438, color:"#FFD700",
+    mustdo:"Fansipan cable car or trek, Muong Hoa Valley terraced rice fields, Cat Cat H'mong Village, Ta Van & Giang Ta Chai village trek",
+    food:"Grilled pork & corn (Thit Nuong) from street stalls, Thang Co stew at Bac Ha market",
+    weather:"⛅ Cold 10–18°C – bring warm layers", tip:"Overnight train or bus from Hanoi (~5–6 hrs). Book ahead – popular. Hire local H'mong guide for valley trek.",
+    skip:"Fansipan if foggy – check forecast the morning before" },
+  { days:"Day 4",    city:"Ha Long Bay",   lat:20.9101, lng:107.1839, color:"#FFD700",
+    mustdo:"1-night junk boat cruise: Sung Sot Cave, kayaking through karst lagoons, floating village visit, Ti Top Island hike at sunset",
+    food:"All-inclusive fresh seafood on the cruise boat",
+    weather:"🌤️ Good – possible morning mist (adds atmosphere)", tip:"Return to Hanoi from Sapa, then transfer to Ha Long (~3.5 hrs). Book mid-range cruise: Paradise or Indochina Junk. Nov = calm seas, fewer crowds.",
+    skip:"Budget cruises – quality gap is huge on Ha Long" },
+  { days:"Day 5",    city:"Hanoi",         lat:21.0340, lng:105.8490, color:"#FFD700",
+    mustdo:"Old Quarter 36 Streets walk, Temple of Literature, Hoa Lo Prison (Hanoi Hilton), Train Street photo stop, West Lake sunset",
+    food:"Bun Cha Huong Lien (Obama's Bun Cha) for lunch, Chay Garden vegetarian dinner",
+    weather:"☀️ Excellent – cool & dry", tip:"Full day in Hanoi after returning from Ha Long. Ho Chi Minh Mausoleum opens early – go before 9 AM if interested.",
+    skip:"Vietnam Museum of Ethnology if short on time" },
+  { days:"Day 6",    city:"Da Nang",       lat:16.0471, lng:108.2068, color:"#FFD700",
+    mustdo:"Fly Hanoi → Da Nang (1 hr). Afternoon: Marble Mountains, Dragon Bridge walk at night",
+    food:"Mi Quang 1A noodles (lunch after landing), Be Man seafood BBQ (evening before Ba Na)",
+    weather:"⛅ Fair – some rain possible in Nov", tip:"Morning flight recommended. Marble Mountains best in morning light. Check Dragon Bridge fire show – Sat/Sun only at 9 PM.",
+    skip:"My Khe beach swim – Nov surf too rough" },
+  { days:"Day 7",    city:"Ba Na Hills",   lat:15.9973, lng:107.9843, color:"#FFD700",
+    mustdo:"Full day at Ba Na Hills: Golden Bridge (giant stone hands), Fantasy Park, French Village, cable car ride (longest in Asia), sunset views",
+    food:"Restaurant at Ba Na Hills resort (all-inclusive if staying overnight)",
+    weather:"⛅ Often misty – CHECK FORECAST before going. Clear days are magical; cloudy days waste the trip.", tip:"Book 1-night stay at Mercure Ba Na Hills or Novotel. Arrive early before day-trippers. Sunset and sunrise views above the clouds on clear nights.",
+    skip:"Entire trip if forecast shows thick cloud all day – reschedule to another day" },
+  { days:"Days 8–9", city:"Da Nang",       lat:16.0600, lng:108.2300, color:"#FFD700",
+    mustdo:"Museum of Cham Sculpture, Han Market, My Khe Beach walk (don't swim), day trip to Hoi An Ancient Town & Banh Mi Phuong, Cao Lau noodles",
+    food:"Madame Lan (veg-friendly), Banh Mi Phuong in Hoi An, White Rose dumplings, Cao Lau noodles",
+    weather:"⛅ Fair – some rain. Check Hoi An flood levels before day trip", tip:"Day 8: city + Hoi An day trip (30 min each way). Day 9: slower pace, beach, shopping at Han Market. Book Hoi An tailor on Day 8 if you want custom clothes.",
+    skip:"Ba Na Hills again if you already went Day 7" },
+  { days:"Day 10",   city:"Ho Chi Minh City", lat:10.7769, lng:106.7009, color:"#FFD700",
+    mustdo:"Fly Da Nang → HCMC (1 hr 15 min). Afternoon: Reunification Palace, Notre-Dame Cathedral & Central Post Office walk, Ben Thanh Market evening",
+    food:"Banh Mi Huynh Hoa (opens 3 PM – queue!), Hum Vegetarian for dinner",
+    weather:"☀️ Excellent – 30°C dry", tip:"Morning flight gives you full afternoon. District 1 is walkable – Reunification Palace, Cathedral & Post Office are all within 10 min walk.",
+    skip:"Cu Chi Tunnels today – save energy, do it Day 11" },
+  { days:"Day 11",   city:"Ho Chi Minh City", lat:10.7750, lng:106.6950, color:"#FFD700",
+    mustdo:"Cu Chi Tunnels half-day tour (book ahead), War Remnants Museum, Bui Vien Walking Street at night",
+    food:"Pho Le in District 11 (breakfast/lunch), Goi Cuon fresh spring rolls from street stalls, Che dessert stalls near Ben Thanh",
+    weather:"☀️ Excellent", tip:"Cu Chi best done as morning tour (cooler + less crowded). Back by lunch for War Museum. Evening Bui Vien for atmosphere.",
+    skip:"Ben Xe Mien Dong pho if short on time" },
+  { days:"Day 12",   city:"Ho Chi Minh City", lat:10.7800, lng:106.7050, color:"#FFD700",
+    mustdo:"Shopping day: Ben Thanh Market, Dong Khoi Street boutiques, Saigon Square (tailored goods & souvenirs), Binh Tay Market in Cholon/Chinatown",
+    food:"Loving Hut vegetarian (lunch), Che dessert stalls, rooftop bar at Chill Skybar for farewell drinks",
+    weather:"☀️ Excellent", tip:"Start early at Ben Thanh before it gets hot and crowded. Binh Tay in Chinatown is more local and less touristy. Bargain everywhere.",
+    skip:"Binh Tay if already shopped out" }
+];
+
+// ═══════════════════════════════════════════════════════════════
+//  MAP INIT
+// ═══════════════════════════════════════════════════════════════
+const map = L.map('map', { zoomControl:false }).setView([14.5, 108.2], 6);
+L.control.zoom({ position:'bottomright' }).addTo(map);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution:'© OpenStreetMap contributors © CARTO',
+  subdomains:'abcd', maxZoom:19
+}).addTo(map);
+
+// ── CITY LABELS ──
+Object.entries(CITIES).forEach(([name, c]) => {
+  L.marker([c.lat, c.lng], {
+    icon: L.divIcon({
+      className:'', html:`<div class="city-label">${name}</div>`,
+      iconSize:[null,null], iconAnchor:[-6,-6]
+    }),
+    interactive:false, zIndexOffset:-100
+  }).addTo(map);
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  MARKERS
+// ═══════════════════════════════════════════════════════════════
+const TYPE_COLORS = {
+  'Sightseeing':      '#ff6b6b',
+  'Activity':         '#4fc3f7',
+  'Food – Non-Veg':   '#ff9800',
+  'Food – Vegetarian':'#66bb6a',
+  'Nightlife':        '#ce93d8'
+};
+function getColor(type) {
+  return TYPE_COLORS[type] || '#9bb8da';
+}
+function makeDot(color, size=10, priority='') {
+  const glow = priority === 'Must-See' ? `box-shadow:0 0 6px ${color}88;` : '';
+  const border = priority === 'Must-See' ? `border:2px solid ${color};` : 'border:1.5px solid rgba(255,255,255,0.3);';
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};${border}${glow}opacity:0.92;"></div>`,
+    iconSize:[size,size], iconAnchor:[size/2,size/2]
+  });
+}
+
+let markers = [];
+let activeMarker = null;
+
+PLACES.forEach((p, i) => {
+  const color = getColor(p.type);
+  const size = p.priority === 'Must-See' ? 12 : 9;
+  const m = L.marker([p.lat, p.lng], { icon: makeDot(color, size, p.priority) }).addTo(map);
+
+  const gemBadge = p.gem ? `<span class="popup-tag tag-gem">💎 Hidden Gem</span>` : '';
+  const foodType = p.type.startsWith('Food') ?
+    `<span class="popup-food-tag">${p.type === 'Food – Non-Veg' ? '🍖 Non-Veg' : '🥦 Vegetarian'}</span>` : '';
+
+  m.bindPopup(`
+    <div class="popup-title">${p.name}</div>
+    <div><span class="popup-city">${p.city}</span></div>
+    <div class="popup-desc">${p.desc}</div>
+    <div class="popup-tags">
+      <span class="popup-tag tag-type">${p.type}</span>
+      <span class="popup-tag tag-priority">${p.priority}</span>
+      ${gemBadge}
+      ${foodType}
+      <span class="popup-tag tag-dur">⏱ ${p.dur}</span>
+      <span class="popup-tag tag-weather">🌤 ${p.weather}</span>
+    </div>
+  `, { maxWidth:300 });
+
+  m.on('click', () => highlightListItem(i));
+  markers.push({ marker:m, place:p, index:i, visible:true, color, size });
+});
+
+function highlightListItem(idx) {
+  document.querySelectorAll('.place-item').forEach(el => el.classList.remove('highlighted'));
+  const el = document.querySelector(`.place-item[data-index="${idx}"]`);
+  if (el) {
+    el.classList.add('highlighted');
+    el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FILTERS & SEARCH
+// ═══════════════════════════════════════════════════════════════
+const ALL_CITIES    = [...new Set(PLACES.map(p => p.city))].sort();
+const ALL_TYPES     = [...new Set(PLACES.map(p => p.type))].sort();
+const ALL_PRIORITIES = ['Must-See','Recommended','Optional'];
+
+let selectedCities    = new Set();
+let selectedTypes     = new Set();
+let selectedPriorities = new Set();
+
+function buildChips(containerId, items, selectedSet, cssClass) {
+  const c = document.getElementById(containerId);
+  items.forEach(item => {
+    const d = document.createElement('div');
+    d.className = `chip ${cssClass}`;
+    d.textContent = item;
+    d.onclick = () => {
+      if (selectedSet.has(item)) { selectedSet.delete(item); d.classList.remove('active'); }
+      else { selectedSet.add(item); d.classList.add('active'); }
+      applyFilters();
+    };
+    c.appendChild(d);
+  });
+}
+
+buildChips('city-chips',     ALL_CITIES,    selectedCities,    'chip-city');
+buildChips('type-chips',     ALL_TYPES,     selectedTypes,     'chip-type');
+buildChips('priority-chips', ALL_PRIORITIES,selectedPriorities,'chip-priority');
+
+function applyFilters() {
+  const q = document.getElementById('search-input').value.toLowerCase().trim();
+  let count = 0;
+
+  markers.forEach(m => {
+    const p = m.place;
+    const cityOk     = selectedCities.size === 0    || selectedCities.has(p.city);
+    const typeOk     = selectedTypes.size === 0     || selectedTypes.has(p.type);
+    const prioOk     = selectedPriorities.size === 0 || selectedPriorities.has(p.priority);
+    const searchOk   = !q || p.name.toLowerCase().includes(q) || p.city.toLowerCase().includes(q)
+                         || p.desc.toLowerCase().includes(q) || p.type.toLowerCase().includes(q);
+    const show = cityOk && typeOk && prioOk && searchOk;
+    m.visible = show;
+
+    if (show) {
+      if (!map.hasLayer(m.marker)) map.addLayer(m.marker);
+      count++;
+    } else {
+      if (map.hasLayer(m.marker)) map.removeLayer(m.marker);
+    }
+  });
+
+  document.getElementById('count-num').textContent = count;
+  renderList();
+}
+
+function renderList() {
+  const panel = document.getElementById('list-panel');
+  panel.innerHTML = '';
+  const visible = markers.filter(m => m.visible);
+
+  if (visible.length === 0) {
+    panel.innerHTML = '<div class="no-results">No places match your filters.<br>Try clearing some chips.</div>';
+    return;
+  }
+
+  visible.forEach(m => {
+    const p = m.place;
+    const div = document.createElement('div');
+    div.className = 'place-item';
+    div.dataset.index = m.index;
+
+    const icon = p.type === 'Sightseeing' ? '🏛️'
+                : p.type === 'Activity' ? '🎯'
+                : p.type === 'Food – Non-Veg' ? '🍖'
+                : p.type === 'Food – Vegetarian' ? '🥦'
+                : p.type.includes('Night') ? '🌙' : '📍';
+
+    const prioClass = p.priority === 'Must-See' ? 'badge-must'
+                    : p.priority === 'Recommended' ? 'badge-rec' : '';
+    const gemBadge = p.gem ? `<span class="place-city badge-gem">💎</span>` : '';
+
+    div.innerHTML = `
+      <div class="place-icon">${icon}</div>
+      <div class="place-info">
+        <div class="place-name">${p.name}</div>
+        <div class="place-meta">
+          <span class="place-city" style="background:${m.color}22;color:${m.color};border:1px solid ${m.color}44">${p.city}</span>
+          <span class="place-city ${prioClass}">${p.priority}</span>
+          ${gemBadge}
+          <span style="color:#4a6080">⏱ ${p.dur}</span>
+        </div>
+      </div>`;
+
+    div.onclick = () => {
+      map.setView([p.lat, p.lng], 14, { animate:true });
+      m.marker.openPopup();
+      highlightListItem(m.index);
+    };
+    panel.appendChild(div);
+  });
+}
+
+applyFilters();
+
+// Force Leaflet to recalculate map size after layout is painted
+window.addEventListener('load', () => { setTimeout(() => map.invalidateSize(), 100); });
+
+// ═══════════════════════════════════════════════════════════════
+//  ROUTES
+// ═══════════════════════════════════════════════════════════════
+let routeLines = [];
+let routeMarkers = [];
+let activeRoute = 0;
+let currentDay = 0;
+
+function clearRoutes() {
+  routeLines.forEach(l => map.removeLayer(l));
+  routeMarkers.forEach(m => map.removeLayer(m));
+  routeLines = [];
+  routeMarkers = [];
+}
+
+function drawRoute(routeData, color, dashed=false) {
+  clearRoutes();
+  const latlngs = routeData.map(s => [s.lat, s.lng]);
+
+  // Main line
+  const line = L.polyline(latlngs, {
+    color, weight:3, opacity:0.85,
+    dashArray: dashed ? null : null,
+    smoothFactor:1
+  }).addTo(map);
+  routeLines.push(line);
+
+  // Animated dots at each stop
+  routeData.forEach((stop, i) => {
+    const dot = L.circleMarker([stop.lat, stop.lng], {
+      radius:10, fillColor:color, color:'#fff', weight:2,
+      fillOpacity:0.95, className:'route-stop'
+    }).addTo(map);
+
+    dot.bindTooltip(`<b>${stop.days}</b><br>${stop.city}`, {
+      permanent:false, direction:'top', className:'', offset:[0,-8]
+    });
+
+    dot.bindPopup(`
+      <div style="font-size:0.75rem;max-width:260px">
+        <div style="color:${color};font-weight:700;font-size:0.9rem;margin-bottom:4px">${stop.days} – ${stop.city}</div>
+        <div style="color:#90caf9;margin-bottom:4px">🌤 ${stop.weather}</div>
+        <div style="margin-bottom:4px"><b style="color:#f9c912">Must-Do:</b> ${stop.mustdo}</div>
+        <div style="margin-bottom:4px"><b style="color:#ff9800">Food:</b> ${stop.food}</div>
+        <div style="color:#66bb6a;font-size:0.68rem">💡 ${stop.tip}</div>
+        ${stop.skip ? `<div style="color:#ef5350;font-size:0.68rem;margin-top:3px">⏭ Skip: ${stop.skip}</div>` : ''}
+        ${stop.extra ? `<div style="background:#ffffff11;padding:3px 6px;border-radius:4px;font-size:0.68rem;margin-top:4px">${stop.extra}</div>` : ''}
+      </div>`, { maxWidth:280 }
+    );
+
+    // Step number
+    const num = L.divIcon({
+      className:'',
+      html:`<div style="color:#fff;font-weight:700;font-size:0.65rem;text-align:center;line-height:20px">${i+1}</div>`,
+      iconSize:[20,20], iconAnchor:[10,10]
+    });
+    const numMark = L.marker([stop.lat, stop.lng], { icon:num, interactive:false }).addTo(map);
+    routeMarkers.push(dot, numMark);
+  });
+}
+
+function getRouteData(n) {
+  if (n === 'my') return ROUTE_MY;
+  if (n === 14)   return ROUTE_14;
+  return ROUTE_17;
+}
+function getRouteColor(n) {
+  if (n === 'my') return '#FFD700';
+  if (n === 14)   return '#4fc3f7';
+  return '#ce93d8';
+}
+
+function showRouteInfo(route, routeData) {
+  const box = document.getElementById('route-info');
+  const color = getRouteColor(route);
+  const cities = routeData.map((s,i) => `<b>${i+1}.</b> ${s.days}: <span style="color:${color}">${s.city}</span>`).join(' &nbsp;→&nbsp; ');
+  document.getElementById('ri-title').textContent =
+    route === 'my' ? '⭐ My Trip – 12 Days: Hanoi → Sapa → Ha Long → Da Nang → Ba Na Hills → HCMC'
+    : route === 14  ? '⚡ 14-Day Itinerary – South → Central → North'
+    :                 '🌟 17-Day Itinerary – Everything + Ha Long Bay & Sapa Option';
+  document.getElementById('ri-cities').innerHTML = cities;
+  document.getElementById('ri-tip').textContent =
+    route === 'my' ? '✈️ Flights: Land Hanoi → domestic Hanoi→Da Nang → domestic Da Nang→HCMC. 2 domestic flights + 1 overnight train/bus to Sapa.'
+    : route === 14  ? '✈️ Flights: HCMC in → Phu Quoc → Nha Trang → Da Nang → overnight train → Hanoi out (~4 domestic flights + 1 overnight train)'
+    :                 '✈️ Flights: HCMC in → Phu Quoc → Nha Trang → Da Nang → train to Hue → overnight train to Hanoi → Ha Long cruise → Hanoi out';
+  box.classList.add('visible');
+}
+
+function toggleRoute(n) {
+  ['14','17','my','off'].forEach(id => document.getElementById(`btn-${id}`).classList.remove('active'));
+  document.getElementById('day-nav').classList.remove('visible');
+  document.getElementById('route-info').classList.remove('visible');
+
+  if (n === 0) {
+    clearRoutes();
+    document.getElementById('btn-off').classList.add('active');
+    activeRoute = 0;
+    return;
+  }
+
+  activeRoute = n;
+  currentDay = -1;
+  const routeData = getRouteData(n);
+  const color = getRouteColor(n);
+
+  document.getElementById(`btn-${n}`).classList.add('active');
+  document.getElementById('day-nav').classList.add('visible');
+  document.getElementById('day-label').textContent = 'All Days';
+
+  drawRoute(routeData, color);
+  showRouteInfo(n, routeData);
+
+  const latlngs = routeData.map(s => [s.lat, s.lng]);
+  map.fitBounds(L.latLngBounds(latlngs).pad(0.1), { animate:true });
+}
+
+function changeDay(dir) {
+  if (activeRoute === 0) return;
+  const routeData = getRouteData(activeRoute);
+  const color = getRouteColor(activeRoute);
+
+  currentDay += dir;
+  if (currentDay < -1) currentDay = routeData.length - 1;
+  if (currentDay >= routeData.length) currentDay = -1;
+
+  if (currentDay === -1) {
+    document.getElementById('day-label').textContent = 'All Days';
+    drawRoute(routeData, color);
+    const latlngs = routeData.map(s => [s.lat, s.lng]);
+    map.fitBounds(L.latLngBounds(latlngs).pad(0.1));
+  } else {
+    const stop = routeData[currentDay];
+    document.getElementById('day-label').textContent = `${stop.days} – ${stop.city}`;
+
+    // Highlight single stop
+    clearRoutes();
+    const dot = L.circleMarker([stop.lat, stop.lng], {
+      radius:16, fillColor:color, color:'#fff', weight:3, fillOpacity:0.95
+    }).addTo(map);
+    dot.bindPopup(`
+      <div style="font-size:0.75rem;max-width:260px">
+        <div style="color:${color};font-weight:700;font-size:0.9rem;margin-bottom:4px">${stop.days} – ${stop.city}</div>
+        <div style="color:#90caf9;margin-bottom:4px">🌤 ${stop.weather}</div>
+        <div style="margin-bottom:4px"><b style="color:#f9c912">Must-Do:</b> ${stop.mustdo}</div>
+        <div style="margin-bottom:4px"><b style="color:#ff9800">Food:</b> ${stop.food}</div>
+        <div style="color:#66bb6a;font-size:0.68rem">💡 ${stop.tip}</div>
+      </div>`, { maxWidth:280 }).openPopup();
+    routeLines.push(dot);
+    map.setView([stop.lat, stop.lng], 11, { animate:true });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  WEATHER TAB
+// ═══════════════════════════════════════════════════════════════
+function buildWeatherTab() {
+  const c = document.getElementById('weather-tab-content');
+  const ratingIcon = { Excellent:'☀️', Good:'⛅', Fair:'🌦', Poor:'⛈' };
+  const ratingClass = { Excellent:'rating-excellent', Good:'rating-good', Fair:'rating-fair', Poor:'rating-poor' };
+
+  let html = `<div style="font-size:0.7rem;color:#6b8cba;text-transform:uppercase;letter-spacing:.6px;padding:4px 2px 8px">November Weather by City</div>`;
+  WEATHER.forEach(w => {
+    html += `
+    <div class="weather-card" onclick="focusCity('${w.city}')" style="cursor:pointer">
+      <div class="weather-city">${ratingIcon[w.rating] || '🌤'} ${w.city}</div>
+      <div class="weather-rating ${ratingClass[w.rating] || ''}">${w.rating} November conditions</div>
+      <div class="weather-temp">🌡 ${w.temp} &nbsp;|&nbsp; 💧 Rain: ${w.rain} &nbsp;|&nbsp; 🌫 Humidity: ${w.humidity}</div>
+      <div class="weather-note">${w.note}</div>
+    </div>`;
+  });
+  c.innerHTML = html;
+}
+buildWeatherTab();
+
+function focusCity(cityName) {
+  const c = CITIES[cityName];
+  if (c) map.setView([c.lat, c.lng], 12, { animate:true });
+  switchTab('places');
+  // Activate city chip
+  selectedCities.clear();
+  selectedCities.add(cityName);
+  document.querySelectorAll('.chip-city').forEach(el => {
+    el.classList.toggle('active', el.textContent === cityName);
+  });
+  applyFilters();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.getElementById('tab-places').classList.toggle('active', tab === 'places');
+  document.getElementById('tab-routes').classList.toggle('active', tab === 'routes');
+  document.getElementById('tab-weather').classList.toggle('active', tab === 'weather');
+  document.getElementById('list-tab-content').classList.toggle('hidden', tab !== 'places' && tab !== 'routes');
+  document.getElementById('weather-tab-content').classList.toggle('visible', tab === 'weather');
+  document.getElementById('filter-panel').style.display = tab === 'routes' ? 'none' : '';
+  document.getElementById('search-wrap').style.display  = tab === 'routes' ? 'none' : '';
+
+  if (tab === 'routes') {
+    document.getElementById('list-panel').style.display = 'none';
+    document.getElementById('count-bar').style.display = 'none';
+  } else {
+    document.getElementById('list-panel').style.display = '';
+    document.getElementById('count-bar').style.display = '';
+  }
+}
+</script>
+</body>
+</html>
