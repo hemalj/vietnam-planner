@@ -23,38 +23,50 @@
   /* ── LAYOUT ── */
   html, body { height:100%; }
   #main { display:flex; flex:1; overflow:hidden; min-height:0; }
-  #sidebar {
-    width:320px; min-width:260px; background:#0d1f3c; display:flex; flex-direction:column;
+
+  /* LEFT sidebar – filters / search / weather */
+  #sidebar-left {
+    width:280px; min-width:280px; background:#0d1f3c; display:flex; flex-direction:column;
     border-right:1px solid #1e3a5f; overflow:hidden; flex-shrink:0;
     transition: width .25s ease, min-width .25s ease;
   }
-  #sidebar.collapsed { width:0; min-width:0; border-right:none; }
-  #map-wrap { flex:1; position:relative; }
+  #sidebar-left.collapsed { width:0; min-width:0; border-right:none; }
+
+  /* RIGHT sidebar – routes + attraction list */
+  #sidebar-right {
+    width:300px; min-width:300px; background:#0d1f3c; display:flex; flex-direction:column;
+    border-left:1px solid #1e3a5f; overflow:hidden; flex-shrink:0;
+    transition: width .25s ease, min-width .25s ease;
+  }
+  #sidebar-right.collapsed { width:0; min-width:0; border-left:none; }
+
+  #map-wrap { flex:1; position:relative; min-width:0; }
   #map { position:absolute; top:0; left:0; right:0; bottom:0; }
 
-  /* ── SIDEBAR TOGGLE ── */
-  #toggle-btn {
-    position:absolute; top:50%; left:0; transform:translateY(-50%);
-    z-index:1001; background:#c8102e; color:#fff; border:none; cursor:pointer;
-    width:20px; height:52px; border-radius:0 8px 8px 0;
+  /* ── SIDEBAR TOGGLE BUTTONS ── */
+  .sb-toggle {
+    position:absolute; top:50%; z-index:1001;
+    background:#c8102e; color:#fff; border:none; cursor:pointer;
+    width:20px; height:52px;
     display:flex; align-items:center; justify-content:center;
-    font-size:0.85rem; box-shadow:2px 0 8px rgba(0,0,0,0.3);
-    transition: left .25s ease; user-select:none;
+    font-size:0.9rem; box-shadow:2px 0 8px rgba(0,0,0,0.25);
+    transition:background .15s; user-select:none;
   }
-  #toggle-btn:hover { background:#da251d; }
-  #sidebar.collapsed ~ #map-wrap #toggle-btn { left:0; }
-  #toggle-arrow { transition: transform .25s ease; display:inline-block; }
-  #sidebar.collapsed ~ #map-wrap #toggle-arrow { transform: rotate(180deg); }
+  .sb-toggle:hover { background:#da251d; }
+  #toggle-left  { left:0;  transform:translateY(-50%); border-radius:0 8px 8px 0; }
+  #toggle-right { right:0; transform:translateY(-50%); border-radius:8px 0 0 8px; }
 
-  /* ── TABS ── */
-  .tabs { display:flex; background:#091529; border-bottom:1px solid #1e3a5f; }
-  .tab {
-    flex:1; padding:8px 4px; font-size:0.72rem; font-weight:600; cursor:pointer;
-    text-align:center; color:#6b8cba; border-bottom:2px solid transparent;
-    transition:all .2s; letter-spacing:.3px; text-transform:uppercase;
+  /* ── SIDEBAR HEADERS ── */
+  .sb-header {
+    padding:10px 14px; background:#091529; border-bottom:1px solid #1e3a5f;
+    font-size:0.72rem; font-weight:700; color:#f9c912; text-transform:uppercase;
+    letter-spacing:.8px; flex-shrink:0;
   }
-  .tab.active { color:#f9c912; border-bottom-color:#f9c912; background:#0d1f3c; }
-  .tab:hover:not(.active) { color:#9bb8da; background:#0f2340; }
+  .sb-section-title {
+    padding:7px 12px; background:#091529; border-bottom:1px solid #1e3a5f;
+    border-top:1px solid #1e3a5f; font-size:0.7rem; font-weight:700;
+    color:#6b8cba; text-transform:uppercase; letter-spacing:.6px; flex-shrink:0;
+  }
 
   /* ── FILTERS ── */
   #filter-panel { padding:12px; border-bottom:1px solid #1e3a5f; }
@@ -106,11 +118,23 @@
   #day-nav button:hover { background:#2a4f7c; }
   #day-label { flex:1; text-align:center; font-size:0.75rem; font-weight:700; color:#f9c912; }
 
-  /* ── PLACE LIST ── */
-  #list-panel { flex:1; overflow-y:auto; padding:8px; }
+  /* ── PLACE LIST (right sidebar) ── */
+  #list-panel { flex:1; overflow-y:auto; padding:8px; min-height:0; }
   #list-panel::-webkit-scrollbar { width:5px; }
   #list-panel::-webkit-scrollbar-track { background:#091529; }
   #list-panel::-webkit-scrollbar-thumb { background:#2a4070; border-radius:3px; }
+
+  /* ── DAY DETAIL CARD (right sidebar, shown when stepping through route days) ── */
+  #day-detail {
+    display:none; flex-shrink:0; padding:10px 12px; background:#091e36;
+    border-bottom:1px solid #1e3a5f; font-size:0.72rem; line-height:1.6; overflow-y:auto; max-height:55%;
+  }
+  #day-detail.visible { display:block; }
+  #day-detail::-webkit-scrollbar { width:4px; }
+  #day-detail::-webkit-scrollbar-thumb { background:#2a4070; border-radius:3px; }
+  .dd-title { font-size:0.85rem; font-weight:700; margin-bottom:6px; }
+  .dd-row { margin-bottom:4px; }
+  .dd-row b { color:#f9c912; }
 
   .place-item {
     padding:8px 10px; margin-bottom:4px; border-radius:7px; cursor:pointer;
@@ -128,11 +152,11 @@
   .badge-rec { background:#2e7d5222; color:#66bb6a; border:1px solid #2e7d5244; }
   .badge-gem { background:#f9c91222; color:#f9c912; border:1px solid #f9c91244; }
 
-  /* ── WEATHER/STATS TAB ── */
-  #weather-tab-content { padding:10px; overflow-y:auto; display:none; }
-  #weather-tab-content.visible { display:block; }
-  #list-tab-content { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-  #list-tab-content.hidden { display:none; }
+  /* ── WEATHER PANEL (left sidebar) ── */
+  #weather-tab-content { overflow-y:auto; flex:1; padding:8px; }
+  #weather-tab-content::-webkit-scrollbar { width:5px; }
+  #weather-tab-content::-webkit-scrollbar-track { background:#091529; }
+  #weather-tab-content::-webkit-scrollbar-thumb { background:#2a4070; border-radius:3px; }
 
   .weather-card {
     background:#122040; border-radius:8px; padding:10px 12px; margin-bottom:7px;
@@ -147,12 +171,7 @@
   .rating-fair { color:#ffa726; }
   .rating-poor { color:#ef5350; }
 
-  /* ── COUNT BAR ── */
-  #count-bar {
-    padding:6px 12px; background:#091529; border-top:1px solid #1e3a5f;
-    font-size:0.68rem; color:#6b8cba; display:flex; gap:10px; flex-shrink:0;
-  }
-  #count-bar span { color:#9bb8da; font-weight:600; }
+  #count-num { color:#9bb8da; font-weight:700; }
 
   /* ── MAP POPUP STYLING ── */
   .leaflet-popup-content-wrapper {
@@ -194,9 +213,9 @@
 
   /* ── LEGEND ── */
   #legend {
-    position:absolute; top:10px; right:10px; z-index:1000;
+    position:absolute; top:10px; left:10px; z-index:1000;
     background:rgba(255,255,255,0.93); border:1px solid #ddd; border-radius:10px;
-    padding:10px 13px; min-width:150px; box-shadow:0 2px 10px rgba(0,0,0,0.15);
+    padding:10px 13px; min-width:145px; box-shadow:0 2px 10px rgba(0,0,0,0.15);
   }
   #legend h4 { font-size:0.68rem; color:#555; text-transform:uppercase; letter-spacing:.6px; margin-bottom:7px; }
   .legend-item { display:flex; align-items:center; gap:7px; margin-bottom:5px; font-size:0.7rem; color:#333; }
@@ -232,70 +251,39 @@
 
 <div id="main">
 
-  <!-- ── SIDEBAR ── -->
-  <div id="sidebar">
-
-    <!-- Tabs -->
-    <div class="tabs">
-      <div class="tab active" id="tab-places" onclick="switchTab('places')">Places</div>
-      <div class="tab" id="tab-routes" onclick="switchTab('routes')">Routes</div>
-      <div class="tab" id="tab-weather" onclick="switchTab('weather')">Weather</div>
+  <!-- ── LEFT SIDEBAR: Search · Filters · Weather ── -->
+  <div id="sidebar-left">
+    <div class="sb-header">
+      <span>🔍 Explore</span>
     </div>
 
-    <!-- Places tab -->
-    <div id="list-tab-content">
-      <!-- Search -->
-      <div id="search-wrap">
-        <input type="text" id="search-input" placeholder="🔍  Search places, food, cities…" oninput="applyFilters()">
-      </div>
-
-      <!-- Filters -->
-      <div id="filter-panel">
-        <h3>Filter by city</h3>
-        <div class="filter-row" id="city-chips"></div>
-        <h3 style="margin-top:6px">Type</h3>
-        <div class="filter-row" id="type-chips"></div>
-        <h3 style="margin-top:6px">Priority</h3>
-        <div class="filter-row" id="priority-chips"></div>
-      </div>
-
-      <!-- Route panel embedded inside places tab -->
-      <div id="route-panel">
-        <h3>Itinerary route</h3>
-        <div class="route-btns" style="flex-wrap:wrap;">
-          <div class="route-btn route-btn-custom" id="btn-custom" onclick="toggleRoute('custom')" style="flex:2;min-width:100%">📋 Custom 15-Day Trip</div>
-          <div class="route-btn route-btn-my" id="btn-my" onclick="toggleRoute('my')">⭐ My Trip</div>
-          <div class="route-btn route-btn-14" id="btn-14" onclick="toggleRoute(14)">14-Day</div>
-          <div class="route-btn route-btn-17" id="btn-17" onclick="toggleRoute(17)">17-Day</div>
-          <div class="route-btn route-btn-off active" id="btn-off" onclick="toggleRoute(0)">Off</div>
-        </div>
-        <div id="day-nav">
-          <button onclick="changeDay(-1)">‹</button>
-          <div id="day-label">Day 1</div>
-          <button onclick="changeDay(1)">›</button>
-        </div>
-      </div>
-
-      <!-- List -->
-      <div id="list-panel"></div>
-      <div id="count-bar">
-        Showing <span id="count-num">0</span> places
-      </div>
+    <!-- Search -->
+    <div id="search-wrap">
+      <input type="text" id="search-input" placeholder="Search places, food, cities…" oninput="applyFilters()">
     </div>
 
-    <!-- Weather tab -->
-    <div id="weather-tab-content">
+    <!-- Filters -->
+    <div id="filter-panel">
+      <h3>Filter by city</h3>
+      <div class="filter-row" id="city-chips"></div>
+      <h3 style="margin-top:8px">Type</h3>
+      <div class="filter-row" id="type-chips"></div>
+      <h3 style="margin-top:8px">Priority</h3>
+      <div class="filter-row" id="priority-chips"></div>
+    </div>
+
+    <!-- Weather -->
+    <div class="sb-section-title">🌤 November Weather</div>
+    <div id="weather-tab-content" style="display:block; flex:1; overflow-y:auto; padding:8px;">
       <!-- filled by JS -->
     </div>
-
-  </div><!-- /sidebar -->
+  </div><!-- /sidebar-left -->
 
   <!-- ── MAP ── -->
   <div id="map-wrap">
     <div id="map"></div>
-    <button id="toggle-btn" onclick="toggleSidebar()" title="Toggle panel">
-      <span id="toggle-arrow">‹</span>
-    </button>
+    <button class="sb-toggle" id="toggle-left"  onclick="toggleLeft()"  title="Toggle filters">‹</button>
+    <button class="sb-toggle" id="toggle-right" onclick="toggleRight()" title="Toggle itinerary">›</button>
 
     <!-- Legend -->
     <div id="legend">
@@ -317,7 +305,43 @@
       <div class="ri-cities" id="ri-cities"></div>
       <div class="ri-tip" id="ri-tip"></div>
     </div>
-  </div>
+  </div><!-- /map-wrap -->
+
+  <!-- ── RIGHT SIDEBAR: Routes + Attraction List ── -->
+  <div id="sidebar-right">
+    <div class="sb-header">
+      <span>🗺 Itinerary & Places</span>
+    </div>
+
+    <!-- Route selector -->
+    <div id="route-panel">
+      <h3>Select route</h3>
+      <div class="route-btns" style="flex-wrap:wrap;">
+        <div class="route-btn route-btn-custom" id="btn-custom" onclick="toggleRoute('custom')" style="flex:2;min-width:100%">📋 Custom 15-Day Trip</div>
+        <div class="route-btn route-btn-my" id="btn-my" onclick="toggleRoute('my')">⭐ My Trip</div>
+        <div class="route-btn route-btn-14" id="btn-14" onclick="toggleRoute(14)">14-Day</div>
+        <div class="route-btn route-btn-17" id="btn-17" onclick="toggleRoute(17)">17-Day</div>
+        <div class="route-btn route-btn-off active" id="btn-off" onclick="toggleRoute(0)">Off</div>
+      </div>
+      <div id="day-nav">
+        <button onclick="changeDay(-1)">‹</button>
+        <div id="day-label">Day 1</div>
+        <button onclick="changeDay(1)">›</button>
+      </div>
+    </div>
+
+    <!-- Day detail card: shown when a specific day is selected -->
+    <div id="day-detail"></div>
+
+    <!-- Attraction list -->
+    <div class="sb-section-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>📍 Attractions</span>
+      <span style="font-size:0.68rem;color:#6b8cba;font-weight:600;">
+        <span id="count-num">0</span> shown
+      </span>
+    </div>
+    <div id="list-panel"></div>
+  </div><!-- /sidebar-right -->
 
 </div><!-- /main -->
 
@@ -1048,7 +1072,10 @@ function toggleRoute(n) {
 
   if (n === 0) {
     clearRoutes();
+    renderDayDetail(null, '');
     document.getElementById('btn-off').classList.add('active');
+    document.getElementById('day-nav').classList.remove('visible');
+    document.getElementById('route-info').classList.remove('visible');
     activeRoute = 0;
     return;
   }
@@ -1061,12 +1088,41 @@ function toggleRoute(n) {
   document.getElementById(`btn-${n}`).classList.add('active');
   document.getElementById('day-nav').classList.add('visible');
   document.getElementById('day-label').textContent = 'All Days';
+  renderDayDetail(null, color);
 
   drawRoute(routeData, color);
   showRouteInfo(n, routeData);
 
   const latlngs = routeData.map(s => [s.lat, s.lng]);
   map.fitBounds(L.latLngBounds(latlngs).pad(0.1), { animate:true });
+}
+
+function renderDayDetail(stop, color) {
+  const dd = document.getElementById('day-detail');
+  if (!stop) { dd.classList.remove('visible'); dd.innerHTML = ''; return; }
+  const isCustom = stop.morning !== undefined;
+  if (isCustom) {
+    dd.innerHTML = `
+      <div class="dd-title" style="color:${color}">${stop.days} — ${stop.city}</div>
+      <div style="font-size:0.65rem;color:#6b8cba;margin-bottom:6px">🏨 ${stop.stay} &nbsp;|&nbsp; 💰 ${stop.cost}</div>
+      <div class="dd-row"><b>☀️ Morning:</b> ${stop.morning}</div>
+      <div class="dd-row"><b>🌤 Afternoon:</b> ${stop.afternoon}</div>
+      <div class="dd-row"><b>🌙 Evening:</b> ${stop.evening}</div>
+      <div class="dd-row" style="margin-top:4px"><b style="color:#66bb6a">🥦 Veg:</b> ${stop.vegfood}</div>
+      <div class="dd-row"><b style="color:#ff9800">🍖 Non-Veg:</b> ${stop.food}</div>
+      <div class="dd-row" style="margin-top:4px"><b style="color:#4fc3f7">🚗</b> ${stop.transport}</div>
+      <div style="margin-top:6px;padding:5px 8px;background:#0a2a14;border-left:3px solid ${color};border-radius:4px;font-size:0.68rem;color:#a5d6a7">💡 ${stop.tip}</div>`;
+  } else {
+    dd.innerHTML = `
+      <div class="dd-title" style="color:${color}">${stop.days} — ${stop.city}</div>
+      <div style="font-size:0.65rem;color:#6b8cba;margin-bottom:6px">🌤 ${stop.weather}</div>
+      <div class="dd-row"><b>✅ Must-Do:</b> ${stop.mustdo}</div>
+      <div class="dd-row" style="margin-top:4px"><b style="color:#66bb6a">🥦 Veg food:</b> ${stop.vegfood || stop.food}</div>
+      <div class="dd-row"><b style="color:#ff9800">🍖 Non-Veg:</b> ${stop.food}</div>
+      ${stop.skip ? `<div class="dd-row" style="color:#ef5350;margin-top:4px">⏭ Skip: ${stop.skip}</div>` : ''}
+      <div style="margin-top:6px;padding:5px 8px;background:#0a2a14;border-left:3px solid ${color};border-radius:4px;font-size:0.68rem;color:#a5d6a7">💡 ${stop.tip}</div>`;
+  }
+  dd.classList.add('visible');
 }
 
 function changeDay(dir) {
@@ -1080,26 +1136,19 @@ function changeDay(dir) {
 
   if (currentDay === -1) {
     document.getElementById('day-label').textContent = 'All Days';
+    renderDayDetail(null, color);
     drawRoute(routeData, color);
     const latlngs = routeData.map(s => [s.lat, s.lng]);
     map.fitBounds(L.latLngBounds(latlngs).pad(0.1));
   } else {
     const stop = routeData[currentDay];
     document.getElementById('day-label').textContent = `${stop.days} – ${stop.city}`;
-
-    // Highlight single stop
+    renderDayDetail(stop, color);
     clearRoutes();
     const dot = L.circleMarker([stop.lat, stop.lng], {
       radius:16, fillColor:color, color:'#fff', weight:3, fillOpacity:0.95
     }).addTo(map);
-    dot.bindPopup(`
-      <div style="font-size:0.75rem;max-width:260px">
-        <div style="color:${color};font-weight:700;font-size:0.9rem;margin-bottom:4px">${stop.days} – ${stop.city}</div>
-        <div style="color:#90caf9;margin-bottom:4px">🌤 ${stop.weather}</div>
-        <div style="margin-bottom:4px"><b style="color:#f9c912">Must-Do:</b> ${stop.mustdo}</div>
-        <div style="margin-bottom:4px"><b style="color:#ff9800">Food:</b> ${stop.food}</div>
-        <div style="color:#66bb6a;font-size:0.68rem">💡 ${stop.tip}</div>
-      </div>`, { maxWidth:280 }).openPopup();
+    dot.openPopup();
     routeLines.push(dot);
     map.setView([stop.lat, stop.lng], 11, { animate:true });
   }
@@ -1130,43 +1179,31 @@ buildWeatherTab();
 function focusCity(cityName) {
   const c = CITIES[cityName];
   if (c) map.setView([c.lat, c.lng], 12, { animate:true });
-  switchTab('places');
-  // Activate city chip
+  // Filter attraction list to this city
   selectedCities.clear();
   selectedCities.add(cityName);
   document.querySelectorAll('.chip-city').forEach(el => {
     el.classList.toggle('active', el.textContent === cityName);
   });
   applyFilters();
+  // Open right sidebar if collapsed
+  const right = document.getElementById('sidebar-right');
+  if (right.classList.contains('collapsed')) toggleRight();
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  TABS
-// ═══════════════════════════════════════════════════════════════
-function switchTab(tab) {
-  document.getElementById('tab-places').classList.toggle('active', tab === 'places');
-  document.getElementById('tab-routes').classList.toggle('active', tab === 'routes');
-  document.getElementById('tab-weather').classList.toggle('active', tab === 'weather');
-  document.getElementById('list-tab-content').classList.toggle('hidden', tab !== 'places' && tab !== 'routes');
-  document.getElementById('weather-tab-content').classList.toggle('visible', tab === 'weather');
-  document.getElementById('filter-panel').style.display = tab === 'routes' ? 'none' : '';
-  document.getElementById('search-wrap').style.display  = tab === 'routes' ? 'none' : '';
-
-  if (tab === 'routes') {
-    document.getElementById('list-panel').style.display = 'none';
-    document.getElementById('count-bar').style.display = 'none';
-  } else {
-    document.getElementById('list-panel').style.display = '';
-    document.getElementById('count-bar').style.display = '';
-  }
+function toggleLeft() {
+  document.getElementById('sidebar-left').classList.toggle('collapsed');
+  const btn = document.getElementById('toggle-left');
+  const collapsed = document.getElementById('sidebar-left').classList.contains('collapsed');
+  btn.textContent = collapsed ? '›' : '‹';
+  setTimeout(() => map.invalidateSize(), 260);
 }
 
-function toggleSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  const arrow = document.getElementById('toggle-arrow');
-  const collapsed = sidebar.classList.toggle('collapsed');
-  arrow.style.transform = collapsed ? 'rotate(180deg)' : 'rotate(0deg)';
-  // Let Leaflet know the map size changed
+function toggleRight() {
+  document.getElementById('sidebar-right').classList.toggle('collapsed');
+  const btn = document.getElementById('toggle-right');
+  const collapsed = document.getElementById('sidebar-right').classList.contains('collapsed');
+  btn.textContent = collapsed ? '‹' : '›';
   setTimeout(() => map.invalidateSize(), 260);
 }
 </script>
