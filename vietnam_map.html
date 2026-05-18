@@ -238,13 +238,17 @@
 
   .no-results { text-align:center; color:#4a6080; font-size:0.75rem; padding:24px 12px; }
 
+  /* hide mobile-only elements on desktop */
+  #mobile-nav, #mobile-sheet, #sheet-overlay { display:none; }
+
   /* ══════════════════════════════════════════════
      MOBILE  (<= 1023px)
      Map fills screen. Bottom nav + sliding sheets.
   ══════════════════════════════════════════════ */
-  @media (max-width:1023px) {
+  @media (max-width:768px) {
 
-    /* hide desktop sidebars & their toggle buttons */
+    /* show mobile elements, hide desktop sidebars & toggle buttons */
+    #mobile-nav, #mobile-sheet { display:flex; }
     #sidebar-left, #sidebar-right, .sb-toggle { display:none !important; }
 
     /* shrink header */
@@ -259,6 +263,9 @@
 
     /* hide legend on mobile – too cluttered */
     #legend { display:none; }
+
+    /* mobile-sheet needs column direction */
+    #mobile-sheet { flex-direction:column; }
 
     /* route-info bar: shrink to fit */
     #route-info { bottom:72px; width:calc(100% - 24px); max-width:100%; font-size:0.7rem; }
