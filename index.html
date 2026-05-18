@@ -1113,7 +1113,11 @@ function applyFilters() {
   document.getElementById('count-num').textContent = count;
   renderList();
   if (activeRoute !== 0 && currentDay >= 0) {
-    renderDayDetail(getRouteData(activeRoute)[currentDay], getRouteColor(activeRoute));
+    const stop = getRouteData(activeRoute)[currentDay];
+    renderDayDetail(stop, getRouteColor(activeRoute));
+    if (document.getElementById('day-tabs').classList.contains('visible')) {
+      renderDayAttractions(stop.city, 'day-attractions', selectedTypes);
+    }
   }
 }
 
@@ -1343,47 +1347,23 @@ function renderDayDetail(stop, color) {
 
 let activeDayTab = 'itinerary';
 
-function renderDayAttractions(cityName, containerId) {
+function renderDayAttractions(cityName, containerId, typeFilters) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  const cityMarkers = markers.filter(m => m.place.city === cityName);
+  const cityMarkers = markers.filter(function(m) {
+    if (m.place.city !== cityName) return false;
+    if (typeFilters && typeFilters.size > 0 && !typeFilters.has(m.place.type)) return false;
+    return true;
+  });
+  container.innerHTML = '';
   if (cityMarkers.length === 0) {
-    container.innerHTML = '<div style="padding:12px;color:#6b8cba;font-size:0.75rem">No attractions listed for ' + cityName + '.</div>';
+    container.innerHTML = '<div style="padding:12px;color:#6b8cba;font-size:0.75rem">No attractions match your filters for ' + cityName + '.</div>';
     return;
   }
-  let html = '<div style="padding:4px 8px 2px;font-size:0.65rem;color:#6b8cba;text-transform:uppercase;letter-spacing:.6px">' + cityName + ' — ' + cityMarkers.length + ' places</div>';
-  cityMarkers.forEach(function(m) {
-    const p = m.place;
-    const icon = p.type === 'Sightseeing' ? '🏛️' : p.type === 'Activity' ? '🎯'
-               : p.type === 'Food – Non-Veg' ? '🍖' : p.type === 'Food – Vegetarian' ? '🥦'
-               : p.type.includes('Night') ? '🌙' : '📍';
-    const prioClass = p.priority === 'Must-See' ? 'badge-must' : p.priority === 'Recommended' ? 'badge-rec' : '';
-    const gemBadge  = p.gem ? '<span class="place-city badge-gem">💎</span>' : '';
-    html += '<div class="place-item" onclick="map.setView([' + p.lat + ',' + p.lng + '],14,{animate:true});m' + m.index + '_open()">' +
-      '<div class="place-icon">' + icon + '</div>' +
-      '<div class="place-info">' +
-        '<div class="place-name">' + p.name + '</div>' +
-        '<div class="place-meta">' +
-          '<span class="place-city ' + prioClass + '">' + p.priority + '</span>' +
-          gemBadge +
-          '<span style="color:#4a6080">⏱ ' + p.dur + '</span>' +
-        '</div>' +
-      '</div></div>';
-  });
-  container.innerHTML = html;
-  // wire up click handlers now that HTML is set
-  cityMarkers.forEach(function(m) {
-    const items = container.querySelectorAll('.place-item');
-    items.forEach(function(el) {
-      el.onclick = function() {
-        map.setView([m.place.lat, m.place.lng], 14, { animate:true });
-        m.marker.openPopup();
-        highlightListItem(m.index);
-      };
-    });
-  });
-  // re-wire properly using index
-  container.innerHTML = '';
+  const header = document.createElement('div');
+  header.style.cssText = 'padding:4px 8px 2px;font-size:0.65rem;color:#6b8cba;text-transform:uppercase;letter-spacing:.6px';
+  header.textContent = cityName + ' — ' + cityMarkers.length + ' places';
+  container.appendChild(header);
   cityMarkers.forEach(function(m) {
     const p = m.place;
     const icon = p.type === 'Sightseeing' ? '🏛️' : p.type === 'Activity' ? '🎯'
@@ -1416,7 +1396,7 @@ function showDayTabs(cityName) {
   document.getElementById('day-tabs').classList.add('visible');
   document.getElementById('attractions-header').style.display = 'none';
   document.getElementById('list-panel').style.display = 'none';
-  renderDayAttractions(cityName, 'day-attractions');
+  renderDayAttractions(cityName, 'day-attractions', selectedTypes);
   switchDayTab(activeDayTab);
 }
 
@@ -1635,6 +1615,10 @@ function mobApplyFilters() {
   document.getElementById('mob-count').textContent = count;
   if (mobActiveRoute !== 0 && mobCurrentDay >= 0) {
     mobChangeDay(0);
+    const mobStop = getRouteData(mobActiveRoute)[mobCurrentDay];
+    if (document.getElementById('mob-day-tabs').style.display !== 'none') {
+      renderDayAttractions(mobStop.city, 'mob-day-attractions', mobSelectedTypes);
+    }
   }
 }
 
@@ -1696,7 +1680,7 @@ function mobSwitchDayTab(tab) {
 
 function mobShowDayTabs(cityName) {
   document.getElementById('mob-day-tabs').style.display = 'block';
-  renderDayAttractions(cityName, 'mob-day-attractions');
+  renderDayAttractions(cityName, 'mob-day-attractions', mobSelectedTypes);
   mobSwitchDayTab(mobActiveDayTab);
 }
 
