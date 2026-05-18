@@ -237,6 +237,104 @@
   #weather-tab-content::-webkit-scrollbar-thumb { background:#2a4070; border-radius:3px; }
 
   .no-results { text-align:center; color:#4a6080; font-size:0.75rem; padding:24px 12px; }
+
+  /* ══════════════════════════════════════════════
+     MOBILE  (<= 1023px)
+     Map fills screen. Bottom nav + sliding sheets.
+  ══════════════════════════════════════════════ */
+  @media (max-width:1023px) {
+
+    /* hide desktop sidebars & their toggle buttons */
+    #sidebar-left, #sidebar-right, .sb-toggle { display:none !important; }
+
+    /* shrink header */
+    #header { padding:7px 12px; gap:8px; }
+    #header h1 { font-size:1rem; }
+    #header p  { display:none; }
+    .flag { font-size:1.5rem; }
+
+    /* map fills everything below header */
+    #main { position:relative; }
+    #map-wrap { width:100%; }
+
+    /* hide legend on mobile – too cluttered */
+    #legend { display:none; }
+
+    /* route-info bar: shrink to fit */
+    #route-info { bottom:72px; width:calc(100% - 24px); max-width:100%; font-size:0.7rem; }
+
+    /* ── BOTTOM NAV BAR ── */
+    #mobile-nav {
+      position:fixed; bottom:0; left:0; right:0; z-index:2000;
+      height:58px; background:#0d1f3c;
+      border-top:1px solid #1e3a5f;
+      display:flex; align-items:stretch;
+      box-shadow:0 -2px 12px rgba(0,0,0,0.4);
+    }
+    .mob-tab {
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:3px; cursor:pointer; border:none; background:transparent;
+      color:#6b8cba; font-size:0.6rem; font-weight:700; text-transform:uppercase;
+      letter-spacing:.4px; transition:color .15s; padding:0;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .mob-tab .mob-icon { font-size:1.35rem; line-height:1; }
+    .mob-tab.active   { color:#f9c912; border-top:2px solid #f9c912; }
+    .mob-tab:active   { background:rgba(255,255,255,0.05); }
+
+    /* ── BOTTOM SHEET ── */
+    #mobile-sheet {
+      position:fixed; left:0; right:0; bottom:58px; z-index:1900;
+      background:#0d1f3c; border-top:1px solid #2a4f7c;
+      border-radius:16px 16px 0 0;
+      transform:translateY(100%);
+      transition:transform .3s cubic-bezier(.4,0,.2,1);
+      display:flex; flex-direction:column;
+      max-height:72vh;
+      box-shadow:0 -4px 24px rgba(0,0,0,0.5);
+    }
+    #mobile-sheet.open { transform:translateY(0); }
+
+    /* drag handle */
+    #sheet-handle {
+      width:36px; height:4px; border-radius:2px; background:#2a4f7c;
+      margin:10px auto 0; flex-shrink:0;
+    }
+
+    /* sheet header row */
+    #sheet-title {
+      padding:8px 16px 10px; font-size:0.78rem; font-weight:700;
+      color:#f9c912; text-transform:uppercase; letter-spacing:.6px;
+      border-bottom:1px solid #1e3a5f; flex-shrink:0;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    #sheet-close {
+      background:none; border:none; color:#6b8cba; font-size:1.2rem;
+      cursor:pointer; padding:0 2px; line-height:1;
+    }
+
+    /* sheet content panels – only one visible at a time */
+    .sheet-panel { display:none; flex:1; flex-direction:column; overflow:hidden; min-height:0; }
+    .sheet-panel.active { display:flex; }
+
+    /* reuse existing inner elements inside sheet panels */
+    .sheet-panel #search-wrap  { flex-shrink:0; }
+    .sheet-panel #filter-panel { overflow-y:auto; flex-shrink:0; max-height:38vh; }
+    .sheet-panel #list-panel   { flex:1; min-height:0; overflow-y:auto; }
+    .sheet-panel #route-panel  { flex-shrink:0; }
+    .sheet-panel #day-detail   { flex-shrink:0; max-height:35vh; overflow-y:auto; }
+    .sheet-panel #weather-tab-content { flex:1; overflow-y:auto; padding:8px; }
+
+    /* map overlay – tap to close sheet */
+    #sheet-overlay {
+      display:none; position:fixed; inset:0; z-index:1800;
+      background:transparent;
+    }
+    #sheet-overlay.visible { display:block; }
+
+    /* make route-info not overlap bottom nav */
+    #route-info { bottom:70px; }
+  }
 </style>
 </head>
 <body>
@@ -344,6 +442,82 @@
   </div><!-- /sidebar-right -->
 
 </div><!-- /main -->
+
+<!-- ══════════════════════════════════════════
+     MOBILE UI  (hidden on desktop via CSS)
+══════════════════════════════════════════ -->
+
+<!-- tap-outside overlay -->
+<div id="sheet-overlay" onclick="closeSheet()"></div>
+
+<!-- bottom sheet -->
+<div id="mobile-sheet">
+  <div id="sheet-handle"></div>
+  <div id="sheet-title">
+    <span id="sheet-title-text">Explore</span>
+    <button id="sheet-close" onclick="closeSheet()">✕</button>
+  </div>
+
+  <!-- PANEL 1: Explore (search + filters + list) -->
+  <div class="sheet-panel active" id="mob-panel-explore">
+    <div id="mob-search-wrap" style="padding:8px 12px;border-bottom:1px solid #1e3a5f;flex-shrink:0">
+      <input type="text" id="mob-search-input" placeholder="Search places, food, cities…"
+        oninput="mobSearch(this.value)"
+        style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #2a4f7c;background:#122040;color:#e8f0fe;font-size:0.85rem;outline:none">
+    </div>
+    <div id="mob-filter-panel" style="padding:10px 12px;border-bottom:1px solid #1e3a5f;flex-shrink:0;overflow-y:auto;max-height:30vh">
+      <div style="font-size:0.65rem;color:#6b8cba;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">City</div>
+      <div class="filter-row" id="mob-city-chips"></div>
+      <div style="font-size:0.65rem;color:#6b8cba;text-transform:uppercase;letter-spacing:.6px;margin:8px 0 6px">Type</div>
+      <div class="filter-row" id="mob-type-chips"></div>
+      <div style="font-size:0.65rem;color:#6b8cba;text-transform:uppercase;letter-spacing:.6px;margin:8px 0 6px">Priority</div>
+      <div class="filter-row" id="mob-priority-chips"></div>
+    </div>
+    <div style="padding:6px 12px;background:#091529;border-bottom:1px solid #1e3a5f;font-size:0.7rem;color:#6b8cba;flex-shrink:0">
+      📍 <span id="mob-count">0</span> places shown
+    </div>
+    <div id="mob-list-panel" style="flex:1;overflow-y:auto;padding:8px;min-height:0"></div>
+  </div>
+
+  <!-- PANEL 2: Routes -->
+  <div class="sheet-panel" id="mob-panel-routes">
+    <div style="padding:10px 12px;border-bottom:1px solid #1e3a5f;flex-shrink:0">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        <div class="route-btn route-btn-custom mob-rb" id="mob-btn-custom" onclick="mobToggleRoute('custom')" style="min-width:100%">📋 Custom 15-Day Trip</div>
+        <div class="route-btn route-btn-my    mob-rb" id="mob-btn-my"     onclick="mobToggleRoute('my')">⭐ My Trip</div>
+        <div class="route-btn route-btn-14    mob-rb" id="mob-btn-14"     onclick="mobToggleRoute(14)">14-Day</div>
+        <div class="route-btn route-btn-17    mob-rb" id="mob-btn-17"     onclick="mobToggleRoute(17)">17-Day</div>
+        <div class="route-btn route-btn-off mob-rb active" id="mob-btn-off" onclick="mobToggleRoute(0)">Off</div>
+      </div>
+      <div id="mob-day-nav" style="display:none;align-items:center;gap:6px">
+        <button onclick="mobChangeDay(-1)" style="background:#1e3a5f;border:none;color:#9bb8da;width:32px;height:32px;border-radius:6px;cursor:pointer;font-size:1.1rem">‹</button>
+        <div id="mob-day-label" style="flex:1;text-align:center;font-size:0.8rem;font-weight:700;color:#f9c912">All Days</div>
+        <button onclick="mobChangeDay(1)"  style="background:#1e3a5f;border:none;color:#9bb8da;width:32px;height:32px;border-radius:6px;cursor:pointer;font-size:1.1rem">›</button>
+      </div>
+    </div>
+    <!-- day detail inside routes panel -->
+    <div id="mob-day-detail" style="display:none;flex-shrink:0;padding:10px 12px;background:#091e36;border-bottom:1px solid #1e3a5f;font-size:0.75rem;line-height:1.6;overflow-y:auto;max-height:42vh"></div>
+    <div style="flex:1"></div>
+  </div>
+
+  <!-- PANEL 3: Weather -->
+  <div class="sheet-panel" id="mob-panel-weather">
+    <div id="mob-weather-content" style="flex:1;overflow-y:auto;padding:8px"></div>
+  </div>
+</div>
+
+<!-- bottom nav bar -->
+<div id="mobile-nav">
+  <button class="mob-tab active" id="mob-tab-explore" onclick="openSheet('explore')">
+    <span class="mob-icon">🔍</span>Explore
+  </button>
+  <button class="mob-tab" id="mob-tab-routes" onclick="openSheet('routes')">
+    <span class="mob-icon">🗺</span>Routes
+  </button>
+  <button class="mob-tab" id="mob-tab-weather" onclick="openSheet('weather')">
+    <span class="mob-icon">🌤</span>Weather
+  </button>
+</div>
 
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -1206,6 +1380,217 @@ function toggleRight() {
   btn.textContent = collapsed ? '‹' : '›';
   setTimeout(() => map.invalidateSize(), 260);
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  MOBILE BOTTOM SHEET
+// ═══════════════════════════════════════════════════════════════
+const MOB_TITLES = { explore:'🔍 Explore', routes:'🗺 Routes', weather:'🌤 Weather' };
+let mobActiveSheet = null;
+let mobSelectedCities = new Set();
+let mobSelectedTypes = new Set();
+let mobSelectedPriorities = new Set();
+let mobActiveRoute = 0;
+let mobCurrentDay = -1;
+
+function openSheet(name) {
+  // toggle: tap active tab again to close
+  if (mobActiveSheet === name && document.getElementById('mobile-sheet').classList.contains('open')) {
+    closeSheet(); return;
+  }
+  mobActiveSheet = name;
+  // switch panels
+  document.querySelectorAll('.sheet-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`mob-panel-${name}`).classList.add('active');
+  document.getElementById('sheet-title-text').textContent = MOB_TITLES[name];
+  // nav highlight
+  document.querySelectorAll('.mob-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`mob-tab-${name}`).classList.add('active');
+  // open
+  document.getElementById('mobile-sheet').classList.add('open');
+  document.getElementById('sheet-overlay').classList.add('visible');
+  map.invalidateSize();
+}
+
+function closeSheet() {
+  document.getElementById('mobile-sheet').classList.remove('open');
+  document.getElementById('sheet-overlay').classList.remove('visible');
+  document.querySelectorAll('.mob-tab').forEach(t => t.classList.remove('active'));
+  mobActiveSheet = null;
+  map.invalidateSize();
+}
+
+// ── Mobile filter chips ──
+function buildMobChips(containerId, items, selectedSet, cssClass, onChange) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  items.forEach(item => {
+    const d = document.createElement('div');
+    d.className = `chip ${cssClass}`;
+    d.textContent = item;
+    d.onclick = () => {
+      if (selectedSet.has(item)) { selectedSet.delete(item); d.classList.remove('active'); }
+      else { selectedSet.add(item); d.classList.add('active'); }
+      onChange();
+    };
+    c.appendChild(d);
+  });
+}
+
+buildMobChips('mob-city-chips',     ALL_CITIES,     mobSelectedCities,     'chip-city',     mobApplyFilters);
+buildMobChips('mob-type-chips',     ALL_TYPES,      mobSelectedTypes,      'chip-type',     mobApplyFilters);
+buildMobChips('mob-priority-chips', ALL_PRIORITIES, mobSelectedPriorities, 'chip-priority', mobApplyFilters);
+
+function mobSearch(q) { mobApplyFilters(); }
+
+function mobApplyFilters() {
+  const q = (document.getElementById('mob-search-input').value || '').toLowerCase().trim();
+  const panel = document.getElementById('mob-list-panel');
+  panel.innerHTML = '';
+  let count = 0;
+
+  markers.forEach(m => {
+    const p = m.place;
+    const cityOk  = mobSelectedCities.size === 0     || mobSelectedCities.has(p.city);
+    const typeOk  = mobSelectedTypes.size === 0      || mobSelectedTypes.has(p.type);
+    const prioOk  = mobSelectedPriorities.size === 0 || mobSelectedPriorities.has(p.priority);
+    const srchOk  = !q || p.name.toLowerCase().includes(q) || p.city.toLowerCase().includes(q)
+                      || p.desc.toLowerCase().includes(q) || p.type.toLowerCase().includes(q);
+    if (!(cityOk && typeOk && prioOk && srchOk)) return;
+    count++;
+
+    const icon = p.type === 'Sightseeing' ? '🏛️' : p.type === 'Activity' ? '🎯'
+               : p.type === 'Food – Non-Veg' ? '🍖' : p.type === 'Food – Vegetarian' ? '🥦' : '📍';
+    const prioClass = p.priority === 'Must-See' ? 'badge-must' : p.priority === 'Recommended' ? 'badge-rec' : '';
+    const gemBadge  = p.gem ? `<span class="place-city badge-gem">💎</span>` : '';
+
+    const div = document.createElement('div');
+    div.className = 'place-item';
+    div.innerHTML = `
+      <div class="place-icon">${icon}</div>
+      <div class="place-info">
+        <div class="place-name">${p.name}</div>
+        <div class="place-meta">
+          <span class="place-city" style="background:${m.color}22;color:${m.color};border:1px solid ${m.color}44">${p.city}</span>
+          <span class="place-city ${prioClass}">${p.priority}</span>
+          ${gemBadge}
+          <span style="color:#4a6080">⏱ ${p.dur}</span>
+        </div>
+      </div>`;
+    div.onclick = () => {
+      map.setView([p.lat, p.lng], 14, { animate:true });
+      m.marker.openPopup();
+      closeSheet();
+    };
+    panel.appendChild(div);
+  });
+
+  document.getElementById('mob-count').textContent = count;
+}
+
+// ── Mobile weather ──
+function buildMobWeather() {
+  const c = document.getElementById('mob-weather-content');
+  if (!c) return;
+  const ratingIcon  = { Excellent:'☀️', Good:'⛅', Fair:'🌦', Poor:'⛈' };
+  const ratingClass = { Excellent:'rating-excellent', Good:'rating-good', Fair:'rating-fair', Poor:'rating-poor' };
+  let html = '';
+  WEATHER.forEach(w => {
+    html += `<div class="weather-card" onclick="mobFocusCity('${w.city}')" style="cursor:pointer">
+      <div class="weather-city">${ratingIcon[w.rating]||'🌤'} ${w.city}</div>
+      <div class="weather-rating ${ratingClass[w.rating]||''}">${w.rating} November conditions</div>
+      <div class="weather-temp">🌡 ${w.temp} &nbsp;|&nbsp; 💧 ${w.rain} &nbsp;|&nbsp; 🌫 ${w.humidity}</div>
+      <div class="weather-note">${w.note}</div>
+    </div>`;
+  });
+  c.innerHTML = html;
+}
+buildMobWeather();
+
+function mobFocusCity(cityName) {
+  const c = CITIES[cityName];
+  if (c) map.setView([c.lat, c.lng], 12, { animate:true });
+  mobSelectedCities.clear();
+  mobSelectedCities.add(cityName);
+  document.querySelectorAll('#mob-city-chips .chip-city').forEach(el => {
+    el.classList.toggle('active', el.textContent === cityName);
+  });
+  mobApplyFilters();
+  openSheet('explore');
+}
+
+// ── Mobile route ──
+function mobToggleRoute(n) {
+  ['custom','my','14','17','off'].forEach(id => {
+    const el = document.getElementById(`mob-btn-${id}`);
+    if (el) el.classList.remove('active');
+  });
+  document.getElementById('mob-day-nav').style.display = 'none';
+  document.getElementById('mob-day-detail').style.display = 'none';
+
+  if (n === 0) {
+    clearRoutes();
+    document.getElementById('mob-btn-off').classList.add('active');
+    mobActiveRoute = 0; mobCurrentDay = -1;
+    return;
+  }
+  mobActiveRoute = n; mobCurrentDay = -1;
+  const routeData = getRouteData(n);
+  const color     = getRouteColor(n);
+  document.getElementById(`mob-btn-${n}`).classList.add('active');
+  document.getElementById('mob-day-nav').style.display = 'flex';
+  document.getElementById('mob-day-label').textContent = 'All Days';
+  drawRoute(routeData, color);
+  const latlngs = routeData.map(s => [s.lat, s.lng]);
+  map.fitBounds(L.latLngBounds(latlngs).pad(0.1), { animate:true });
+}
+
+function mobChangeDay(dir) {
+  if (mobActiveRoute === 0) return;
+  const routeData = getRouteData(mobActiveRoute);
+  const color     = getRouteColor(mobActiveRoute);
+  mobCurrentDay += dir;
+  if (mobCurrentDay < -1)               mobCurrentDay = routeData.length - 1;
+  if (mobCurrentDay >= routeData.length) mobCurrentDay = -1;
+
+  const dd = document.getElementById('mob-day-detail');
+  if (mobCurrentDay === -1) {
+    document.getElementById('mob-day-label').textContent = 'All Days';
+    dd.style.display = 'none'; dd.innerHTML = '';
+    drawRoute(routeData, color);
+    const latlngs = routeData.map(s => [s.lat, s.lng]);
+    map.fitBounds(L.latLngBounds(latlngs).pad(0.1));
+  } else {
+    const stop = routeData[mobCurrentDay];
+    document.getElementById('mob-day-label').textContent = `${stop.days} – ${stop.city}`;
+    const isCustom = stop.morning !== undefined;
+    dd.innerHTML = isCustom ? `
+      <div style="color:${color};font-weight:700;font-size:0.85rem;margin-bottom:4px">${stop.days} — ${stop.city}</div>
+      <div style="font-size:0.65rem;color:#6b8cba;margin-bottom:6px">🏨 ${stop.stay} &nbsp;|&nbsp; 💰 ${stop.cost}</div>
+      <div style="margin-bottom:3px"><b style="color:#f9c912">☀️ Morning:</b> ${stop.morning}</div>
+      <div style="margin-bottom:3px"><b style="color:#f9c912">🌤 Afternoon:</b> ${stop.afternoon}</div>
+      <div style="margin-bottom:5px"><b style="color:#f9c912">🌙 Evening:</b> ${stop.evening}</div>
+      <div style="margin-bottom:3px"><b style="color:#66bb6a">🥦</b> ${stop.vegfood}</div>
+      <div style="margin-bottom:5px"><b style="color:#ff9800">🍖</b> ${stop.food}</div>
+      <div style="background:#0a2a14;padding:5px 8px;border-left:3px solid ${color};border-radius:4px;font-size:0.7rem;color:#a5d6a7">💡 ${stop.tip}</div>`
+    : `
+      <div style="color:${color};font-weight:700;font-size:0.85rem;margin-bottom:4px">${stop.days} — ${stop.city}</div>
+      <div style="font-size:0.65rem;color:#6b8cba;margin-bottom:5px">🌤 ${stop.weather}</div>
+      <div style="margin-bottom:4px"><b style="color:#f9c912">✅ Must-Do:</b> ${stop.mustdo}</div>
+      <div style="margin-bottom:3px"><b style="color:#66bb6a">🥦</b> ${stop.vegfood||stop.food}</div>
+      <div style="margin-bottom:5px"><b style="color:#ff9800">🍖</b> ${stop.food}</div>
+      <div style="background:#0a2a14;padding:5px 8px;border-left:3px solid ${color};border-radius:4px;font-size:0.7rem;color:#a5d6a7">💡 ${stop.tip}</div>`;
+    dd.style.display = 'block';
+    clearRoutes();
+    const dot = L.circleMarker([stop.lat, stop.lng], {
+      radius:16, fillColor:color, color:'#fff', weight:3, fillOpacity:0.95
+    }).addTo(map);
+    routeLines.push(dot);
+    map.setView([stop.lat, stop.lng], 11, { animate:true });
+  }
+}
+
+// init mobile list on load
+mobApplyFilters();
 </script>
 </body>
 </html>
