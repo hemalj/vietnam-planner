@@ -26,9 +26,25 @@
   #sidebar {
     width:320px; min-width:260px; background:#0d1f3c; display:flex; flex-direction:column;
     border-right:1px solid #1e3a5f; overflow:hidden; flex-shrink:0;
+    transition: width .25s ease, min-width .25s ease;
   }
+  #sidebar.collapsed { width:0; min-width:0; border-right:none; }
   #map-wrap { flex:1; position:relative; }
   #map { position:absolute; top:0; left:0; right:0; bottom:0; }
+
+  /* ── SIDEBAR TOGGLE ── */
+  #toggle-btn {
+    position:absolute; top:50%; left:0; transform:translateY(-50%);
+    z-index:1001; background:#c8102e; color:#fff; border:none; cursor:pointer;
+    width:20px; height:52px; border-radius:0 8px 8px 0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:0.85rem; box-shadow:2px 0 8px rgba(0,0,0,0.3);
+    transition: left .25s ease; user-select:none;
+  }
+  #toggle-btn:hover { background:#da251d; }
+  #sidebar.collapsed ~ #map-wrap #toggle-btn { left:0; }
+  #toggle-arrow { transition: transform .25s ease; display:inline-block; }
+  #sidebar.collapsed ~ #map-wrap #toggle-arrow { transform: rotate(180deg); }
 
   /* ── TABS ── */
   .tabs { display:flex; background:#091529; border-bottom:1px solid #1e3a5f; }
@@ -70,6 +86,8 @@
     flex:1; padding:6px 8px; border-radius:6px; font-size:0.72rem; font-weight:700; cursor:pointer;
     border:2px solid transparent; text-align:center; transition:all .2s;
   }
+  .route-btn-custom { background:#002a12; color:#00E676; border-color:#002a12; font-size:0.74rem; }
+  .route-btn-custom.active { background:#004d21; color:#00E676; border-color:#00E676; box-shadow:0 0 8px #00E67666; }
   .route-btn-my { background:#2a2000; color:#FFD700; border-color:#2a2000; }
   .route-btn-my.active { background:#3d2e00; color:#FFD700; border-color:#FFD700; box-shadow:0 0 8px #FFD70066; }
   .route-btn-14 { background:#1e3a5f; color:#4fc3f7; border-color:#1e3a5f; }
@@ -244,8 +262,9 @@
       <!-- Route panel embedded inside places tab -->
       <div id="route-panel">
         <h3>Itinerary route</h3>
-        <div class="route-btns">
-          <div class="route-btn route-btn-my" id="btn-my" onclick="toggleRoute('my')" style="flex:1.3">⭐ My Trip</div>
+        <div class="route-btns" style="flex-wrap:wrap;">
+          <div class="route-btn route-btn-custom" id="btn-custom" onclick="toggleRoute('custom')" style="flex:2;min-width:100%">📋 Custom 15-Day Trip</div>
+          <div class="route-btn route-btn-my" id="btn-my" onclick="toggleRoute('my')">⭐ My Trip</div>
           <div class="route-btn route-btn-14" id="btn-14" onclick="toggleRoute(14)">14-Day</div>
           <div class="route-btn route-btn-17" id="btn-17" onclick="toggleRoute(17)">17-Day</div>
           <div class="route-btn route-btn-off active" id="btn-off" onclick="toggleRoute(0)">Off</div>
@@ -274,6 +293,9 @@
   <!-- ── MAP ── -->
   <div id="map-wrap">
     <div id="map"></div>
+    <button id="toggle-btn" onclick="toggleSidebar()" title="Toggle panel">
+      <span id="toggle-arrow">‹</span>
+    </button>
 
     <!-- Legend -->
     <div id="legend">
@@ -283,7 +305,8 @@
       <div class="legend-item"><div class="legend-dot" style="background:#ff9800"></div>Food – Non-Veg</div>
       <div class="legend-item"><div class="legend-dot" style="background:#66bb6a"></div>Food – Vegetarian</div>
       <div class="legend-item"><div class="legend-dot" style="background:#ce93d8"></div>Nightlife / Market</div>
-      <div class="legend-item" style="margin-top:6px"><div class="legend-line" style="background:#FFD700"></div>⭐ My Trip</div>
+      <div class="legend-item" style="margin-top:6px"><div class="legend-line" style="background:#FFD700"></div>⭐ My Trip (12-day)</div>
+      <div class="legend-item"><div class="legend-line" style="background:#00E676"></div>📋 Custom Trip (15-day)</div>
       <div class="legend-item"><div class="legend-line" style="background:#4fc3f7"></div>14-Day route</div>
       <div class="legend-item"><div class="legend-line" style="background:#ce93d8"></div>17-Day route</div>
     </div>
@@ -597,6 +620,130 @@ const ROUTE_MY = [
     skip:"Binh Tay if already shopped out" }
 ];
 
+// ── Custom 15-Day Trip (from Vietnam_Travel_Planner_November_2.xlsx) ──
+// Hanoi 3N → Sapa 2N → Ha Long 1N → Da Nang 1N → Ba Na Hills 1N → Da Nang 1N → Phu Quoc 2N → HCMC 3N
+const ROUTE_CUSTOM = [
+  { days:"Day 1", city:"Hanoi", lat:21.0285, lng:105.8542, color:"#00E676",
+    morning:"Land Noi Bai Airport. Grab taxi to Old Quarter (~45 min, ~$10 USD). Check in & freshen up.",
+    afternoon:"Hoan Kiem Lake stroll, Ngoc Son Temple. Walk 36 Old Quarter streets.",
+    evening:"Egg coffee at Cafe Giang. Night walk around the lit-up lake.",
+    vegfood:"Cafe Giang Egg Coffee", food:"Pho Gia Truyen – overnight-simmered beef pho (opens 6 AM!)",
+    transport:"Airport Grab taxi ~$8–10 CAD", cost:"~$15–25 CAD",
+    tip:"Easy arrival day. Don't over-plan. Enjoy the lake vibe at night.", stay:"Old Quarter Hotel" },
+
+  { days:"Day 2", city:"Hanoi", lat:21.0340, lng:105.8490, color:"#00E676",
+    morning:"Temple of Literature (9–11 AM). Ho Chi Minh Mausoleum complex – closed Mon/Fri.",
+    afternoon:"Vietnam Museum of Ethnology (world-class, 2 hrs). West Lake sunset café.",
+    evening:"Train Street (Phung Hung) dusk visit. Bun Cha Obama area for dinner.",
+    vegfood:"Tamarind Cafe – excellent tofu & veg Vietnamese dishes", food:"Bun Cha Huong Lien (Obama's spot) – grilled pork + vermicelli",
+    transport:"Walk + Grab around city", cost:"~$20–35 CAD",
+    tip:"PLAN CHECK: Day 9 must be Sat or Sun for Dragon Bridge. If arriving Thu, Day 9 = Sat. Perfect!", stay:"Old Quarter Hotel" },
+
+  { days:"Day 3", city:"Sapa", lat:22.3364, lng:103.8438, color:"#00E676",
+    morning:"Leave Hanoi 6:00–6:30 AM sharp. Sapa Express bus or private car. Scenic Tram Ton Pass.",
+    afternoon:"Arrive Sapa ~1–2 PM. Check in. Walk to Cat Cat Hmong Village (3 km, easy downhill).",
+    evening:"Sapa night market – grilled corn, BBQ skewers. Valley views at dusk.",
+    vegfood:"Sapa O'Chau Cafe – veg-friendly, run by local Hmong youth", food:"Grilled pork & corn skewers at Sapa night market",
+    transport:"Sapa Express bus ~$15–20 CAD OR private car ~$80–100 split", cost:"~$15–25 CAD",
+    tip:"Sit LEFT side of bus for best Tram Ton Pass views. Book bus in advance online.", stay:"Sapa town hotel" },
+
+  { days:"Day 4", city:"Sapa", lat:22.2900, lng:103.8700, color:"#00E676",
+    morning:"Full-day guided trek: Muong Hoa Valley → Ta Van Village → Giang Ta Chai (Red Dao). 8–10 km.",
+    afternoon:"Lunch with local family in Ta Van. Cross hanging bridges through rice terraces.",
+    evening:"Return to Sapa. Rooftop bar with Fansipan views. Early night – long drive tomorrow.",
+    vegfood:"Baguette & Chocolat – French-Vietnamese cafe, great veg options", food:"Thang Co (horse stew) at Sapa market – adventurous traditional dish",
+    transport:"Local guide hire ~$15–20 CAD (essential for village access)", cost:"~$30–40 CAD",
+    tip:"HIDDEN GEM: Request Giang Ta Chai village – far fewer tourists than Cat Cat. Bring cash for crafts.", stay:"Sapa town hotel" },
+
+  { days:"Day 5", city:"Hanoi", lat:21.0285, lng:105.8542, color:"#00E676",
+    morning:"Early Sapa departure (6 AM). 6–8 hr return drive/bus to Hanoi. Arrive early afternoon.",
+    afternoon:"Rest, repack. Confirm Ha Long cruise pickup time for tomorrow morning.",
+    evening:"Easy dinner near Hoan Kiem. Try Bun Bo Nam Bo (dry noodle salad). Early night.",
+    vegfood:"Chay Garden – beautiful veg garden restaurant in Old Quarter", food:"Bun Bo Nam Bo – dry beef noodle salad with crispy shallots",
+    transport:"Sapa → Hanoi return bus ~$15–20 CAD", cost:"~$15–25 CAD",
+    tip:"Tiring day – keep low key. Confirm Ha Long cruise by phone/app.", stay:"Hanoi hotel (transit)" },
+
+  { days:"Day 6", city:"Ha Long Bay", lat:20.9101, lng:107.1839, color:"#00E676",
+    morning:"Cruise bus picks up from hotel ~8 AM. 3.5 hr drive to pier. Board junk boat at noon. Sail out.",
+    afternoon:"Sung Sot (Surprise) Cave. Kayaking through Cua Van floating fishing village.",
+    evening:"Sunset on top deck with drinks. Fresh seafood dinner on boat. Stargazing on the bay.",
+    vegfood:"All meals included – notify crew of veg preference at boarding", food:"Grilled squid, prawns & scallops on boat (all inclusive)",
+    transport:"Cruise transfer included in package. Book mid-range: ~$120–180 CAD/person", cost:"~$130–190 CAD",
+    tip:"Book cruise 2–3 weeks ahead. Paradise Elegance or Indochina Junk recommended. Tip crew $5–10 USD.", stay:"Junk Boat (overnight)" },
+
+  { days:"Day 7", city:"Da Nang", lat:16.0471, lng:108.2068, color:"#00E676",
+    morning:"Sunrise on deck. Brunch on boat. Morning kayak or Ti Top Island hike.",
+    afternoon:"Cruise returns to pier ~11:30 AM. Bus back to Hanoi ~3 PM. Transfer to Noi Bai Airport.",
+    evening:"Evening flight Hanoi → Da Nang (~1.5 hrs). Arrive 8–9 PM. Check in, rest.",
+    vegfood:"Hotel restaurant on arrival", food:"Hotel restaurant on arrival",
+    transport:"FLIGHT: Hanoi → Da Nang ~$40–70 CAD (VietJet/Bamboo). Book 7 PM+ departure.", cost:"~$50–80 CAD",
+    tip:"TIGHT DAY. Book 7 PM+ flight from Hanoi to allow buffer after Ha Long returns at noon.", stay:"Da Nang city hotel" },
+
+  { days:"Day 8", city:"Ba Na Hills", lat:15.9973, lng:107.9843, color:"#00E676",
+    morning:"Morning: My Khe Beach walk (no swimming – Nov surf rough). Dragon Bridge exterior photo.",
+    afternoon:"Drive to Ba Na Hills (45 min). Cable car up (world's longest). Golden Bridge + French Village.",
+    evening:"STAY OVERNIGHT at Ba Na Hills – magical French village lights and cool mountain air (~18°C).",
+    vegfood:"French Village restaurants have veg pasta and salad options", food:"BBQ dinner at Ba Na Hills restaurants",
+    transport:"Grab to Ba Na Hills + cable car tickets: ~$35–50 CAD/person", cost:"~$80–130 CAD (hotel at hills)",
+    tip:"Staying overnight is the best tip: experience Golden Bridge at SUNRISE before day-trippers. Book Mercure in advance!", stay:"Mercure Hotel at Ba Na Hills" },
+
+  { days:"Day 9", city:"Da Nang", lat:16.0600, lng:108.2300, color:"#00E676",
+    morning:"GOLDEN BRIDGE SUNRISE at 6:30 AM – best photos ever. You're already there! French Village morning.",
+    afternoon:"Cable car down to Da Nang. Marble Mountains (2 hrs – caves, pagodas, rooftop views).",
+    evening:"DRAGON BRIDGE FIRE & WATER SHOW – SAT & SUN 9 PM ONLY. Watch from bridge end at 8:45 PM.",
+    vegfood:"Madame Lan – elegant veg-friendly Central Vietnamese", food:"Mi Quang 1A – turmeric noodles with shrimp (Da Nang signature)",
+    transport:"Grab within city ~$2–3 CAD", cost:"~$25–40 CAD",
+    tip:"CRITICAL: Dragon Bridge = Sat or Sun ONLY. If arriving Hanoi on Thursday (Day 1), Day 9 = Saturday. PERFECT.", stay:"Da Nang city hotel" },
+
+  { days:"Day 10", city:"Phu Quoc", lat:10.2899, lng:103.9840, color:"#00E676",
+    morning:"Morning flight Da Nang → Phu Quoc ($36 CAD one-way – USE YOUR DEAL!). Check in, beach.",
+    afternoon:"Sao Beach (30 min south by taxi) – powdery white sand, crystal turquoise water.",
+    evening:"Phu Quoc Night Market (Dinh Cau) – fresh seafood grilled in front of you. Very lively.",
+    vegfood:"Tofu & noodle stalls at Dinh Cau Night Market", food:"Pepper crab & grilled prawns at Dinh Cau Night Market",
+    transport:"Da Nang → Phu Quoc: $36 CAD one-way (your deal!) – VietJet or Bamboo", cost:"~$50–70 CAD",
+    tip:"November = PEAK SEASON Phu Quoc. Clearest water of the year. Book snorkelling for Day 11 morning NOW!", stay:"Long Beach / Duong Dong" },
+
+  { days:"Day 11", city:"Phu Quoc", lat:10.1200, lng:104.0600, color:"#00E676",
+    morning:"Snorkelling at An Thoi Archipelago – boat tour 8 AM–4 PM. Coral reefs and sea turtles!",
+    afternoon:"Fish Sauce Factory tour at Khai Hoan (free). Visit a local pepper plantation.",
+    evening:"Sunset from Long Beach bar. Ong Lang Beach stargazing + bioluminescent plankton at night.",
+    vegfood:"Ganesh Indian Restaurant – excellent dal, paneer, roti (veg traveller friendly)", food:"Fresh lobster at Long Beach seafood restaurants",
+    transport:"Snorkelling day tour: ~$25–35 CAD/person", cost:"~$45–65 CAD",
+    tip:"HIDDEN GEM: Bioluminescent plankton at Ong Lang Beach – stir dark water with your hands and watch it glow blue. Free!", stay:"Long Beach" },
+
+  { days:"Day 12", city:"Ho Chi Minh City", lat:10.7769, lng:106.7009, color:"#00E676",
+    morning:"Morning flight Phu Quoc → HCMC (~1 hr, ~$30–50 CAD). Check into District 1. Pool time.",
+    afternoon:"Reunification Palace (2 hrs, AC inside). Notre-Dame Cathedral photo stop.",
+    evening:"Bui Vien Walking Street – neon-lit, live music, street bars.",
+    vegfood:"Loving Hut Vegan – multiple District 1 locations, extensive menu", food:"Goi Cuon fresh spring rolls at street stalls near Ben Thanh Market",
+    transport:"PQ → HCMC: ~$30–50 CAD (VietJet). Total Da Nang>PQ>HCMC = ~$66–86 CAD", cost:"~$40–60 CAD",
+    tip:"Flight tip: $36 Da Nang→PQ + ~$35 PQ→HCMC is smarter than $72 return since you end in HCMC.", stay:"District 1 Hotel" },
+
+  { days:"Day 13", city:"Ho Chi Minh City", lat:10.7750, lng:106.6950, color:"#00E676",
+    morning:"War Remnants Museum – arrive early (9 AM), plan 2.5–3 hrs. Very powerful. Bring tissues.",
+    afternoon:"Ben Thanh Market (1–2 hrs). Binh Tay Market in Chinatown (more authentic, less touristy).",
+    evening:"Street food crawl: Banh Mi Huynh Hoa, Che dessert stalls. Pho Le for late dinner (open 24 hrs).",
+    vegfood:"Hum Vegetarian Cafe – upscale veg fine dining in heritage building. BOOK AHEAD.", food:"Banh Mi Huynh Hoa – Vietnam's most stuffed and famous banh mi. Queue!",
+    transport:"Grab around city ~$2–3 CAD each", cost:"~$25–40 CAD",
+    tip:"War Museum: Do NOT rush. 2.5 hours minimum. Photography allowed. Outdoor aircraft display is impressive.", stay:"District 1 Hotel" },
+
+  { days:"Day 14", city:"Ho Chi Minh City", lat:10.7800, lng:106.7050, color:"#00E676",
+    morning:"Full-day Cu Chi Tunnels tour – depart 7:30 AM, return by early afternoon. Book ahead.",
+    afternoon:"Afternoon free: hotel pool, spa, or optional Mekong Delta day-trip.",
+    evening:"Final Vietnam dinner! Splurge on a rooftop restaurant. Last visit to Bui Vien night street.",
+    vegfood:"Che dessert street stalls – coconut, mung bean, jelly. Mostly vegan.", food:"Pho Le District 11 – wide-noodle HCMC style beef pho. 24-hr restaurant.",
+    transport:"Cu Chi shared tour: ~$15–25 CAD | Private: ~$60 CAD", cost:"~$35–55 CAD",
+    tip:"Book Ben Dinh tunnels (smaller and quieter) NOT Ben Duoc – better experience, fewer crowds.", stay:"District 1 Hotel" },
+
+  { days:"Day 15", city:"Ho Chi Minh City", lat:10.8150, lng:106.6600, color:"#00E676",
+    morning:"Last Vietnamese iced coffee (Ca Phe Sua Da) and banh mi for breakfast.",
+    afternoon:"Check out. Head to Tan Son Nhat Airport 2–3 hrs before international departure.",
+    evening:"Fly home from HCMC (SGN). Vietnam trip complete! 🎉",
+    vegfood:"Airport snacks – spend leftover dong", food:"Last banh mi at airport or Huynh Hoa if near opening hours",
+    transport:"Hotel → Airport Grab: ~$5–8 CAD (book in advance in-app)", cost:"~$10–15 CAD",
+    tip:"DONE! 15 incredible days across Vietnam. Safe travels!", stay:"Tan Son Nhat Airport (SGN)" }
+];
+
 // ═══════════════════════════════════════════════════════════════
 //  MAP INIT
 // ═══════════════════════════════════════════════════════════════
@@ -827,7 +974,20 @@ function drawRoute(routeData, color, dashed=false) {
       permanent:false, direction:'top', className:'', offset:[0,-8]
     });
 
-    dot.bindPopup(`
+    const isCustom = stop.morning !== undefined;
+    const popupContent = isCustom ? `
+      <div style="font-size:0.74rem;max-width:290px;line-height:1.5">
+        <div style="color:${color};font-weight:700;font-size:0.9rem;margin-bottom:3px">${stop.days} – ${stop.city}</div>
+        <div style="font-size:0.65rem;color:#888;margin-bottom:6px">🏨 ${stop.stay}</div>
+        <div style="margin-bottom:3px"><b style="color:#e65100">☀️ Morning:</b> ${stop.morning}</div>
+        <div style="margin-bottom:3px"><b style="color:#1565c0">🌤 Afternoon:</b> ${stop.afternoon}</div>
+        <div style="margin-bottom:5px"><b style="color:#4a148c">🌙 Evening:</b> ${stop.evening}</div>
+        <div style="margin-bottom:3px"><b style="color:#66bb6a">🥦 Veg:</b> ${stop.vegfood}</div>
+        <div style="margin-bottom:5px"><b style="color:#ff9800">🍖 Non-Veg:</b> ${stop.food}</div>
+        <div style="margin-bottom:3px"><b style="color:#0288d1">🚗 Transport:</b> ${stop.transport}</div>
+        <div style="margin-bottom:5px"><b style="color:#f9c912">💰 Est. Cost:</b> ${stop.cost}</div>
+        <div style="background:#f0fff4;padding:4px 7px;border-radius:5px;color:#2e7d52;font-size:0.68rem;border-left:3px solid #00E676">💡 ${stop.tip}</div>
+      </div>` : `
       <div style="font-size:0.75rem;max-width:260px">
         <div style="color:${color};font-weight:700;font-size:0.9rem;margin-bottom:4px">${stop.days} – ${stop.city}</div>
         <div style="color:#90caf9;margin-bottom:4px">🌤 ${stop.weather}</div>
@@ -836,8 +996,8 @@ function drawRoute(routeData, color, dashed=false) {
         <div style="color:#66bb6a;font-size:0.68rem">💡 ${stop.tip}</div>
         ${stop.skip ? `<div style="color:#ef5350;font-size:0.68rem;margin-top:3px">⏭ Skip: ${stop.skip}</div>` : ''}
         ${stop.extra ? `<div style="background:#ffffff11;padding:3px 6px;border-radius:4px;font-size:0.68rem;margin-top:4px">${stop.extra}</div>` : ''}
-      </div>`, { maxWidth:280 }
-    );
+      </div>`;
+    dot.bindPopup(popupContent, { maxWidth:300 });
 
     // Step number
     const num = L.divIcon({
@@ -851,13 +1011,15 @@ function drawRoute(routeData, color, dashed=false) {
 }
 
 function getRouteData(n) {
-  if (n === 'my') return ROUTE_MY;
-  if (n === 14)   return ROUTE_14;
+  if (n === 'custom') return ROUTE_CUSTOM;
+  if (n === 'my')     return ROUTE_MY;
+  if (n === 14)       return ROUTE_14;
   return ROUTE_17;
 }
 function getRouteColor(n) {
-  if (n === 'my') return '#FFD700';
-  if (n === 14)   return '#4fc3f7';
+  if (n === 'custom') return '#00E676';
+  if (n === 'my')     return '#FFD700';
+  if (n === 14)       return '#4fc3f7';
   return '#ce93d8';
 }
 
@@ -866,19 +1028,21 @@ function showRouteInfo(route, routeData) {
   const color = getRouteColor(route);
   const cities = routeData.map((s,i) => `<b>${i+1}.</b> ${s.days}: <span style="color:${color}">${s.city}</span>`).join(' &nbsp;→&nbsp; ');
   document.getElementById('ri-title').textContent =
-    route === 'my' ? '⭐ My Trip – 12 Days: Hanoi → Sapa → Ha Long → Da Nang → Ba Na Hills → HCMC'
-    : route === 14  ? '⚡ 14-Day Itinerary – South → Central → North'
-    :                 '🌟 17-Day Itinerary – Everything + Ha Long Bay & Sapa Option';
+    route === 'custom' ? '📋 Custom 15-Day Trip – Hanoi › Sapa › Ha Long › Da Nang › Ba Na Hills › Phu Quoc › HCMC'
+    : route === 'my'   ? '⭐ My Trip – 12 Days: Hanoi › Sapa › Ha Long › Da Nang › Ba Na Hills › HCMC'
+    : route === 14     ? '⚡ 14-Day Itinerary – South › Central › North'
+    :                    '🌟 17-Day Itinerary – Everything + Ha Long Bay & Sapa Option';
   document.getElementById('ri-cities').innerHTML = cities;
   document.getElementById('ri-tip').textContent =
-    route === 'my' ? '✈️ Flights: Land Hanoi → domestic Hanoi→Da Nang → domestic Da Nang→HCMC. 2 domestic flights + 1 overnight train/bus to Sapa.'
-    : route === 14  ? '✈️ Flights: HCMC in → Phu Quoc → Nha Trang → Da Nang → overnight train → Hanoi out (~4 domestic flights + 1 overnight train)'
-    :                 '✈️ Flights: HCMC in → Phu Quoc → Nha Trang → Da Nang → train to Hue → overnight train to Hanoi → Ha Long cruise → Hanoi out';
+    route === 'custom' ? '✈️ 4 Domestic Flights: Hanoi→Da Nang · Da Nang→Phu Quoc ($36 deal!) · Phu Quoc→HCMC + 1 overnight bus to Sapa. Total 15 days / 14 nights.'
+    : route === 'my'   ? '✈️ Flights: Land Hanoi → domestic Hanoi→Da Nang → domestic Da Nang→HCMC. 2 domestic flights + 1 overnight train/bus to Sapa.'
+    : route === 14     ? '✈️ Flights: HCMC in → Phu Quoc → Nha Trang → Da Nang → overnight train → Hanoi out (~4 domestic flights + 1 overnight train)'
+    :                    '✈️ Flights: HCMC in → Phu Quoc → Nha Trang → Da Nang → train to Hue → overnight train to Hanoi → Ha Long cruise → Hanoi out';
   box.classList.add('visible');
 }
 
 function toggleRoute(n) {
-  ['14','17','my','off'].forEach(id => document.getElementById(`btn-${id}`).classList.remove('active'));
+  ['14','17','my','custom','off'].forEach(id => document.getElementById(`btn-${id}`).classList.remove('active'));
   document.getElementById('day-nav').classList.remove('visible');
   document.getElementById('route-info').classList.remove('visible');
 
@@ -995,6 +1159,15 @@ function switchTab(tab) {
     document.getElementById('list-panel').style.display = '';
     document.getElementById('count-bar').style.display = '';
   }
+}
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const arrow = document.getElementById('toggle-arrow');
+  const collapsed = sidebar.classList.toggle('collapsed');
+  arrow.style.transform = collapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+  // Let Leaflet know the map size changed
+  setTimeout(() => map.invalidateSize(), 260);
 }
 </script>
 </body>
