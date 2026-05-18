@@ -222,6 +222,19 @@
   .legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
   .legend-line { width:20px; height:3px; border-radius:2px; flex-shrink:0; }
 
+  /* ── DAY-DETAIL TABS (desktop) ── */
+  #day-tabs { display:none; gap:0; border-bottom:1px solid #1e3a5f; flex-shrink:0; }
+  #day-tabs.visible { display:flex; }
+  .day-tab-btn {
+    flex:1; padding:6px 0; font-size:0.72rem; font-weight:700; text-align:center;
+    cursor:pointer; color:#6b8cba; background:transparent; border:none;
+    border-bottom:2px solid transparent; transition:all .15s;
+  }
+  .day-tab-btn.active { color:#f9c912; border-bottom-color:#f9c912; }
+  .day-tab-btn:hover:not(.active) { color:#9bb8da; }
+  #day-attractions { display:none; flex:1; overflow-y:auto; }
+  #day-attractions.visible { display:block; }
+
   /* ── SEARCH ── */
   #search-wrap { padding:8px 12px; border-bottom:1px solid #1e3a5f; flex-shrink:0; }
   #search-input {
@@ -432,11 +445,20 @@
       </div>
     </div>
 
-    <!-- Day detail card: shown when a specific day is selected -->
+    <!-- Tab switcher: shown only when a day is selected -->
+    <div id="day-tabs">
+      <button class="day-tab-btn active" id="tab-btn-itinerary" onclick="switchDayTab('itinerary')">📅 Itinerary</button>
+      <button class="day-tab-btn" id="tab-btn-attractions" onclick="switchDayTab('attractions')">📍 Attractions</button>
+    </div>
+
+    <!-- Day detail card: tab content for Itinerary -->
     <div id="day-detail"></div>
 
-    <!-- Attraction list -->
-    <div class="sb-section-title" style="display:flex;justify-content:space-between;align-items:center;">
+    <!-- City-filtered attractions: tab content for Attractions -->
+    <div id="day-attractions"></div>
+
+    <!-- Attraction list (shown when no day selected, or on Attractions tab) -->
+    <div class="sb-section-title" id="attractions-header" style="display:flex;justify-content:space-between;align-items:center;">
       <span>📍 Attractions</span>
       <span style="font-size:0.68rem;color:#6b8cba;font-weight:600;">
         <span id="count-num">0</span> shown
@@ -496,9 +518,18 @@
         <button onclick="mobChangeDay(1)"  style="background:#1e3a5f;border:none;color:#9bb8da;width:32px;height:32px;border-radius:6px;cursor:pointer;font-size:1.1rem">›</button>
       </div>
     </div>
+    <!-- tab switcher (shown when a day is selected) -->
+    <div id="mob-day-tabs" style="display:none;flex-shrink:0;border-bottom:1px solid #1e3a5f;">
+      <div style="display:flex">
+        <button class="day-tab-btn active" id="mob-tab-btn-itinerary" onclick="mobSwitchDayTab('itinerary')" style="flex:1;padding:7px 0;font-size:0.72rem;font-weight:700;text-align:center;cursor:pointer;color:#f9c912;background:transparent;border:none;border-bottom:2px solid #f9c912">📅 Itinerary</button>
+        <button class="day-tab-btn" id="mob-tab-btn-attractions" onclick="mobSwitchDayTab('attractions')" style="flex:1;padding:7px 0;font-size:0.72rem;font-weight:700;text-align:center;cursor:pointer;color:#6b8cba;background:transparent;border:none;border-bottom:2px solid transparent">📍 Attractions</button>
+      </div>
+    </div>
     <!-- day detail inside routes panel -->
-    <div id="mob-day-detail" style="display:none;flex-shrink:0;padding:10px 12px;background:#091e36;border-bottom:1px solid #1e3a5f;font-size:0.75rem;line-height:1.6;overflow-y:auto;max-height:42vh"></div>
-    <div style="flex:1"></div>
+    <div id="mob-day-detail" style="display:none;flex-shrink:0;padding:10px 12px;background:#091e36;border-bottom:1px solid #1e3a5f;font-size:0.75rem;line-height:1.6;overflow-y:auto;max-height:38vh"></div>
+    <!-- city-filtered attractions for the selected day -->
+    <div id="mob-day-attractions" style="display:none;flex:1;overflow-y:auto;padding:8px;min-height:0"></div>
+    <div id="mob-routes-spacer" style="flex:1"></div>
   </div>
 
   <!-- PANEL 3: Weather -->
@@ -1081,6 +1112,9 @@ function applyFilters() {
 
   document.getElementById('count-num').textContent = count;
   renderList();
+  if (activeRoute !== 0 && currentDay >= 0) {
+    renderDayDetail(getRouteData(activeRoute)[currentDay], getRouteColor(activeRoute));
+  }
 }
 
 function renderList() {
@@ -1130,18 +1164,18 @@ function renderList() {
   });
 }
 
-applyFilters();
-
-// Force Leaflet to recalculate map size after layout is painted
-window.addEventListener('load', () => { setTimeout(() => map.invalidateSize(), 100); });
-
 // ═══════════════════════════════════════════════════════════════
 //  ROUTES
 // ═══════════════════════════════════════════════════════════════
 let routeLines = [];
 let routeMarkers = [];
 let activeRoute = 0;
-let currentDay = 0;
+let currentDay = -1;
+
+applyFilters();
+
+// Force Leaflet to recalculate map size after layout is painted
+window.addEventListener('load', () => { setTimeout(() => map.invalidateSize(), 100); });
 
 function clearRoutes() {
   routeLines.forEach(l => map.removeLayer(l));
@@ -1245,6 +1279,8 @@ function toggleRoute(n) {
   document.getElementById('day-nav').classList.remove('visible');
   document.getElementById('route-info').classList.remove('visible');
 
+  hideDayTabs();
+
   if (n === 0) {
     clearRoutes();
     renderDayDetail(null, '');
@@ -1260,7 +1296,7 @@ function toggleRoute(n) {
   const routeData = getRouteData(n);
   const color = getRouteColor(n);
 
-  document.getElementById(`btn-${n}`).classList.add('active');
+  document.getElementById('btn-' + n).classList.add('active');
   document.getElementById('day-nav').classList.add('visible');
   document.getElementById('day-label').textContent = 'All Days';
   renderDayDetail(null, color);
@@ -1276,28 +1312,137 @@ function renderDayDetail(stop, color) {
   const dd = document.getElementById('day-detail');
   if (!stop) { dd.classList.remove('visible'); dd.innerHTML = ''; return; }
   const isCustom = stop.morning !== undefined;
+  const onlyVeg    = selectedTypes.has('Food – Vegetarian') && !selectedTypes.has('Food – Non-Veg');
+  const onlyNonVeg = selectedTypes.has('Food – Non-Veg')   && !selectedTypes.has('Food – Vegetarian');
+  const vegLine    = onlyNonVeg ? '' : '<div class="dd-row" style="margin-top:4px"><b style="color:#66bb6a">🥦 Veg:</b> ' + (isCustom ? stop.vegfood : (stop.vegfood || stop.food)) + '</div>';
+  const nonvegLine = onlyVeg    ? '' : '<div class="dd-row"><b style="color:#ff9800">🍖 Non-Veg:</b> ' + stop.food + '</div>';
   if (isCustom) {
-    dd.innerHTML = `
-      <div class="dd-title" style="color:${color}">${stop.days} — ${stop.city}</div>
-      <div style="font-size:0.65rem;color:#6b8cba;margin-bottom:6px">🏨 ${stop.stay} &nbsp;|&nbsp; 💰 ${stop.cost}</div>
-      <div class="dd-row"><b>☀️ Morning:</b> ${stop.morning}</div>
-      <div class="dd-row"><b>🌤 Afternoon:</b> ${stop.afternoon}</div>
-      <div class="dd-row"><b>🌙 Evening:</b> ${stop.evening}</div>
-      <div class="dd-row" style="margin-top:4px"><b style="color:#66bb6a">🥦 Veg:</b> ${stop.vegfood}</div>
-      <div class="dd-row"><b style="color:#ff9800">🍖 Non-Veg:</b> ${stop.food}</div>
-      <div class="dd-row" style="margin-top:4px"><b style="color:#4fc3f7">🚗</b> ${stop.transport}</div>
-      <div style="margin-top:6px;padding:5px 8px;background:#0a2a14;border-left:3px solid ${color};border-radius:4px;font-size:0.68rem;color:#a5d6a7">💡 ${stop.tip}</div>`;
+    dd.innerHTML =
+      '<div class="dd-title" style="color:' + color + '">' + stop.days + ' — ' + stop.city + '</div>' +
+      '<div style="font-size:0.65rem;color:#6b8cba;margin-bottom:6px">🏨 ' + stop.stay + ' &nbsp;|&nbsp; 💰 ' + stop.cost + '</div>' +
+      '<div class="dd-row"><b>☀️ Morning:</b> ' + stop.morning + '</div>' +
+      '<div class="dd-row"><b>🌤 Afternoon:</b> ' + stop.afternoon + '</div>' +
+      '<div class="dd-row"><b>🌙 Evening:</b> ' + stop.evening + '</div>' +
+      vegLine + nonvegLine +
+      '<div class="dd-row" style="margin-top:4px"><b style="color:#4fc3f7">🚗</b> ' + stop.transport + '</div>' +
+      '<div style="margin-top:6px;padding:5px 8px;background:#0a2a14;border-left:3px solid ' + color + ';border-radius:4px;font-size:0.68rem;color:#a5d6a7">💡 ' + stop.tip + '</div>';
   } else {
-    dd.innerHTML = `
-      <div class="dd-title" style="color:${color}">${stop.days} — ${stop.city}</div>
-      <div style="font-size:0.65rem;color:#6b8cba;margin-bottom:6px">🌤 ${stop.weather}</div>
-      <div class="dd-row"><b>✅ Must-Do:</b> ${stop.mustdo}</div>
-      <div class="dd-row" style="margin-top:4px"><b style="color:#66bb6a">🥦 Veg food:</b> ${stop.vegfood || stop.food}</div>
-      <div class="dd-row"><b style="color:#ff9800">🍖 Non-Veg:</b> ${stop.food}</div>
-      ${stop.skip ? `<div class="dd-row" style="color:#ef5350;margin-top:4px">⏭ Skip: ${stop.skip}</div>` : ''}
-      <div style="margin-top:6px;padding:5px 8px;background:#0a2a14;border-left:3px solid ${color};border-radius:4px;font-size:0.68rem;color:#a5d6a7">💡 ${stop.tip}</div>`;
+    dd.innerHTML =
+      '<div class="dd-title" style="color:' + color + '">' + stop.days + ' — ' + stop.city + '</div>' +
+      '<div style="font-size:0.65rem;color:#6b8cba;margin-bottom:6px">🌤 ' + stop.weather + '</div>' +
+      '<div class="dd-row"><b>✅ Must-Do:</b> ' + stop.mustdo + '</div>' +
+      vegLine + nonvegLine +
+      (stop.skip ? '<div class="dd-row" style="color:#ef5350;margin-top:4px">⏭ Skip: ' + stop.skip + '</div>' : '') +
+      '<div style="margin-top:6px;padding:5px 8px;background:#0a2a14;border-left:3px solid ' + color + ';border-radius:4px;font-size:0.68rem;color:#a5d6a7">💡 ' + stop.tip + '</div>';
   }
-  dd.classList.add('visible');
+  // visibility is controlled by switchDayTab when tabs are shown; only auto-show when no tabs
+  if (!document.getElementById('day-tabs').classList.contains('visible')) {
+    dd.classList.add('visible');
+  }
+}
+
+let activeDayTab = 'itinerary';
+
+function renderDayAttractions(cityName, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const cityMarkers = markers.filter(m => m.place.city === cityName);
+  if (cityMarkers.length === 0) {
+    container.innerHTML = '<div style="padding:12px;color:#6b8cba;font-size:0.75rem">No attractions listed for ' + cityName + '.</div>';
+    return;
+  }
+  let html = '<div style="padding:4px 8px 2px;font-size:0.65rem;color:#6b8cba;text-transform:uppercase;letter-spacing:.6px">' + cityName + ' — ' + cityMarkers.length + ' places</div>';
+  cityMarkers.forEach(function(m) {
+    const p = m.place;
+    const icon = p.type === 'Sightseeing' ? '🏛️' : p.type === 'Activity' ? '🎯'
+               : p.type === 'Food – Non-Veg' ? '🍖' : p.type === 'Food – Vegetarian' ? '🥦'
+               : p.type.includes('Night') ? '🌙' : '📍';
+    const prioClass = p.priority === 'Must-See' ? 'badge-must' : p.priority === 'Recommended' ? 'badge-rec' : '';
+    const gemBadge  = p.gem ? '<span class="place-city badge-gem">💎</span>' : '';
+    html += '<div class="place-item" onclick="map.setView([' + p.lat + ',' + p.lng + '],14,{animate:true});m' + m.index + '_open()">' +
+      '<div class="place-icon">' + icon + '</div>' +
+      '<div class="place-info">' +
+        '<div class="place-name">' + p.name + '</div>' +
+        '<div class="place-meta">' +
+          '<span class="place-city ' + prioClass + '">' + p.priority + '</span>' +
+          gemBadge +
+          '<span style="color:#4a6080">⏱ ' + p.dur + '</span>' +
+        '</div>' +
+      '</div></div>';
+  });
+  container.innerHTML = html;
+  // wire up click handlers now that HTML is set
+  cityMarkers.forEach(function(m) {
+    const items = container.querySelectorAll('.place-item');
+    items.forEach(function(el) {
+      el.onclick = function() {
+        map.setView([m.place.lat, m.place.lng], 14, { animate:true });
+        m.marker.openPopup();
+        highlightListItem(m.index);
+      };
+    });
+  });
+  // re-wire properly using index
+  container.innerHTML = '';
+  cityMarkers.forEach(function(m) {
+    const p = m.place;
+    const icon = p.type === 'Sightseeing' ? '🏛️' : p.type === 'Activity' ? '🎯'
+               : p.type === 'Food – Non-Veg' ? '🍖' : p.type === 'Food – Vegetarian' ? '🥦'
+               : p.type.includes('Night') ? '🌙' : '📍';
+    const prioClass = p.priority === 'Must-See' ? 'badge-must' : p.priority === 'Recommended' ? 'badge-rec' : '';
+    const gemBadge  = p.gem ? '<span class="place-city badge-gem">💎</span>' : '';
+    const div = document.createElement('div');
+    div.className = 'place-item';
+    div.innerHTML =
+      '<div class="place-icon">' + icon + '</div>' +
+      '<div class="place-info">' +
+        '<div class="place-name">' + p.name + '</div>' +
+        '<div class="place-meta">' +
+          '<span class="place-city ' + prioClass + '">' + p.priority + '</span>' +
+          gemBadge +
+          '<span style="color:#4a6080">⏱ ' + p.dur + '</span>' +
+        '</div>' +
+      '</div>';
+    div.onclick = function() {
+      map.setView([p.lat, p.lng], 14, { animate:true });
+      m.marker.openPopup();
+      highlightListItem(m.index);
+    };
+    container.appendChild(div);
+  });
+}
+
+function showDayTabs(cityName) {
+  document.getElementById('day-tabs').classList.add('visible');
+  document.getElementById('attractions-header').style.display = 'none';
+  document.getElementById('list-panel').style.display = 'none';
+  renderDayAttractions(cityName, 'day-attractions');
+  switchDayTab(activeDayTab);
+}
+
+function hideDayTabs() {
+  document.getElementById('day-tabs').classList.remove('visible');
+  document.getElementById('day-detail').classList.remove('visible');
+  document.getElementById('day-attractions').classList.remove('visible');
+  document.getElementById('day-attractions').innerHTML = '';
+  document.getElementById('attractions-header').style.display = '';
+  document.getElementById('list-panel').style.display = '';
+  activeDayTab = 'itinerary';
+}
+
+function switchDayTab(tab) {
+  activeDayTab = tab;
+  document.getElementById('tab-btn-itinerary').classList.toggle('active', tab === 'itinerary');
+  document.getElementById('tab-btn-attractions').classList.toggle('active', tab === 'attractions');
+  const dd = document.getElementById('day-detail');
+  const da = document.getElementById('day-attractions');
+  if (tab === 'itinerary') {
+    dd.classList.add('visible');
+    da.classList.remove('visible');
+  } else {
+    dd.classList.remove('visible');
+    da.classList.add('visible');
+  }
 }
 
 function changeDay(dir) {
@@ -1312,13 +1457,15 @@ function changeDay(dir) {
   if (currentDay === -1) {
     document.getElementById('day-label').textContent = 'All Days';
     renderDayDetail(null, color);
+    hideDayTabs();
     drawRoute(routeData, color);
     const latlngs = routeData.map(s => [s.lat, s.lng]);
     map.fitBounds(L.latLngBounds(latlngs).pad(0.1));
   } else {
     const stop = routeData[currentDay];
-    document.getElementById('day-label').textContent = `${stop.days} – ${stop.city}`;
+    document.getElementById('day-label').textContent = stop.days + ' – ' + stop.city;
     renderDayDetail(stop, color);
+    showDayTabs(stop.city);
     clearRoutes();
     const dot = L.circleMarker([stop.lat, stop.lng], {
       radius:16, fillColor:color, color:'#fff', weight:3, fillOpacity:0.95
@@ -1486,6 +1633,9 @@ function mobApplyFilters() {
   });
 
   document.getElementById('mob-count').textContent = count;
+  if (mobActiveRoute !== 0 && mobCurrentDay >= 0) {
+    mobChangeDay(0);
+  }
 }
 
 // ── Mobile weather ──
@@ -1520,13 +1670,52 @@ function mobFocusCity(cityName) {
 }
 
 // ── Mobile route ──
+let mobActiveDayTab = 'itinerary';
+
+function mobSwitchDayTab(tab) {
+  mobActiveDayTab = tab;
+  const btnIt = document.getElementById('mob-tab-btn-itinerary');
+  const btnAt = document.getElementById('mob-tab-btn-attractions');
+  const dd    = document.getElementById('mob-day-detail');
+  const da    = document.getElementById('mob-day-attractions');
+  const sp    = document.getElementById('mob-routes-spacer');
+  if (tab === 'itinerary') {
+    btnIt.style.color = '#f9c912'; btnIt.style.borderBottomColor = '#f9c912';
+    btnAt.style.color = '#6b8cba'; btnAt.style.borderBottomColor = 'transparent';
+    dd.style.display = 'block';
+    da.style.display = 'none';
+    sp.style.display = '';
+  } else {
+    btnAt.style.color = '#f9c912'; btnAt.style.borderBottomColor = '#f9c912';
+    btnIt.style.color = '#6b8cba'; btnIt.style.borderBottomColor = 'transparent';
+    dd.style.display = 'none';
+    da.style.display = 'block';
+    sp.style.display = 'none';
+  }
+}
+
+function mobShowDayTabs(cityName) {
+  document.getElementById('mob-day-tabs').style.display = 'block';
+  renderDayAttractions(cityName, 'mob-day-attractions');
+  mobSwitchDayTab(mobActiveDayTab);
+}
+
+function mobHideDayTabs() {
+  document.getElementById('mob-day-tabs').style.display = 'none';
+  document.getElementById('mob-day-detail').style.display = 'none';
+  document.getElementById('mob-day-attractions').style.display = 'none';
+  document.getElementById('mob-day-attractions').innerHTML = '';
+  document.getElementById('mob-routes-spacer').style.display = '';
+  mobActiveDayTab = 'itinerary';
+}
+
 function mobToggleRoute(n) {
   ['custom','my','14','17','off'].forEach(id => {
-    const el = document.getElementById(`mob-btn-${id}`);
+    const el = document.getElementById('mob-btn-' + id);
     if (el) el.classList.remove('active');
   });
   document.getElementById('mob-day-nav').style.display = 'none';
-  document.getElementById('mob-day-detail').style.display = 'none';
+  mobHideDayTabs();
 
   if (n === 0) {
     clearRoutes();
@@ -1537,7 +1726,7 @@ function mobToggleRoute(n) {
   mobActiveRoute = n; mobCurrentDay = -1;
   const routeData = getRouteData(n);
   const color     = getRouteColor(n);
-  document.getElementById(`mob-btn-${n}`).classList.add('active');
+  document.getElementById('mob-btn-' + n).classList.add('active');
   document.getElementById('mob-day-nav').style.display = 'flex';
   document.getElementById('mob-day-label').textContent = 'All Days';
   drawRoute(routeData, color);
@@ -1557,30 +1746,37 @@ function mobChangeDay(dir) {
   if (mobCurrentDay === -1) {
     document.getElementById('mob-day-label').textContent = 'All Days';
     dd.style.display = 'none'; dd.innerHTML = '';
+    mobHideDayTabs();
     drawRoute(routeData, color);
     const latlngs = routeData.map(s => [s.lat, s.lng]);
     map.fitBounds(L.latLngBounds(latlngs).pad(0.1));
   } else {
     const stop = routeData[mobCurrentDay];
-    document.getElementById('mob-day-label').textContent = `${stop.days} – ${stop.city}`;
-    const isCustom = stop.morning !== undefined;
-    dd.innerHTML = isCustom ? `
-      <div style="color:${color};font-weight:700;font-size:0.85rem;margin-bottom:4px">${stop.days} — ${stop.city}</div>
-      <div style="font-size:0.65rem;color:#6b8cba;margin-bottom:6px">🏨 ${stop.stay} &nbsp;|&nbsp; 💰 ${stop.cost}</div>
-      <div style="margin-bottom:3px"><b style="color:#f9c912">☀️ Morning:</b> ${stop.morning}</div>
-      <div style="margin-bottom:3px"><b style="color:#f9c912">🌤 Afternoon:</b> ${stop.afternoon}</div>
-      <div style="margin-bottom:5px"><b style="color:#f9c912">🌙 Evening:</b> ${stop.evening}</div>
-      <div style="margin-bottom:3px"><b style="color:#66bb6a">🥦</b> ${stop.vegfood}</div>
-      <div style="margin-bottom:5px"><b style="color:#ff9800">🍖</b> ${stop.food}</div>
-      <div style="background:#0a2a14;padding:5px 8px;border-left:3px solid ${color};border-radius:4px;font-size:0.7rem;color:#a5d6a7">💡 ${stop.tip}</div>`
-    : `
-      <div style="color:${color};font-weight:700;font-size:0.85rem;margin-bottom:4px">${stop.days} — ${stop.city}</div>
-      <div style="font-size:0.65rem;color:#6b8cba;margin-bottom:5px">🌤 ${stop.weather}</div>
-      <div style="margin-bottom:4px"><b style="color:#f9c912">✅ Must-Do:</b> ${stop.mustdo}</div>
-      <div style="margin-bottom:3px"><b style="color:#66bb6a">🥦</b> ${stop.vegfood||stop.food}</div>
-      <div style="margin-bottom:5px"><b style="color:#ff9800">🍖</b> ${stop.food}</div>
-      <div style="background:#0a2a14;padding:5px 8px;border-left:3px solid ${color};border-radius:4px;font-size:0.7rem;color:#a5d6a7">💡 ${stop.tip}</div>`;
+    document.getElementById('mob-day-label').textContent = stop.days + ' – ' + stop.city;
+    const isCustom      = stop.morning !== undefined;
+    const mobOnlyVeg    = mobSelectedTypes.has('Food – Vegetarian') && !mobSelectedTypes.has('Food – Non-Veg');
+    const mobOnlyNonVeg = mobSelectedTypes.has('Food – Non-Veg')   && !mobSelectedTypes.has('Food – Vegetarian');
+    const mobVegLine    = mobOnlyNonVeg ? '' : '<div style="margin-bottom:3px"><b style="color:#66bb6a">🥦</b> ' + (isCustom ? stop.vegfood : (stop.vegfood || stop.food)) + '</div>';
+    const mobNonvegLine = mobOnlyVeg    ? '' : '<div style="margin-bottom:5px"><b style="color:#ff9800">🍖</b> ' + stop.food + '</div>';
+    if (isCustom) {
+      dd.innerHTML =
+        '<div style="color:' + color + ';font-weight:700;font-size:0.85rem;margin-bottom:4px">' + stop.days + ' — ' + stop.city + '</div>' +
+        '<div style="font-size:0.65rem;color:#6b8cba;margin-bottom:6px">🏨 ' + stop.stay + ' &nbsp;|&nbsp; 💰 ' + stop.cost + '</div>' +
+        '<div style="margin-bottom:3px"><b style="color:#f9c912">☀️ Morning:</b> ' + stop.morning + '</div>' +
+        '<div style="margin-bottom:3px"><b style="color:#f9c912">🌤 Afternoon:</b> ' + stop.afternoon + '</div>' +
+        '<div style="margin-bottom:5px"><b style="color:#f9c912">🌙 Evening:</b> ' + stop.evening + '</div>' +
+        mobVegLine + mobNonvegLine +
+        '<div style="background:#0a2a14;padding:5px 8px;border-left:3px solid ' + color + ';border-radius:4px;font-size:0.7rem;color:#a5d6a7">💡 ' + stop.tip + '</div>';
+    } else {
+      dd.innerHTML =
+        '<div style="color:' + color + ';font-weight:700;font-size:0.85rem;margin-bottom:4px">' + stop.days + ' — ' + stop.city + '</div>' +
+        '<div style="font-size:0.65rem;color:#6b8cba;margin-bottom:5px">🌤 ' + stop.weather + '</div>' +
+        '<div style="margin-bottom:4px"><b style="color:#f9c912">✅ Must-Do:</b> ' + stop.mustdo + '</div>' +
+        mobVegLine + mobNonvegLine +
+        '<div style="background:#0a2a14;padding:5px 8px;border-left:3px solid ' + color + ';border-radius:4px;font-size:0.7rem;color:#a5d6a7">💡 ' + stop.tip + '</div>';
+    }
     dd.style.display = 'block';
+    mobShowDayTabs(stop.city);
     clearRoutes();
     const dot = L.circleMarker([stop.lat, stop.lng], {
       radius:16, fillColor:color, color:'#fff', weight:3, fillOpacity:0.95
