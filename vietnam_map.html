@@ -202,12 +202,15 @@
   #route-info.visible { display:block; }
   #ri-header {
     display:flex; align-items:center; justify-content:space-between;
-    padding:8px 12px; cursor:pointer; user-select:none;
+    padding:8px 12px 6px; cursor:pointer; user-select:none; border-bottom:1px solid #eee;
   }
   #ri-header:hover { background:rgba(0,0,0,0.04); }
   #ri-title { font-size:0.82rem; font-weight:700; color:#c8102e; flex:1; margin:0; }
-  #ri-toggle { font-size:0.75rem; color:#888; margin-left:8px; flex-shrink:0; }
-  #ri-body { padding:0 12px 10px; }
+  #ri-toggle {
+    font-size:0.7rem; color:#fff; background:#c8102e; border-radius:4px;
+    padding:2px 6px; margin-left:10px; flex-shrink:0; font-weight:700;
+  }
+  #ri-body { padding:8px 12px 10px; }
   #route-info .ri-cities { font-size:0.75rem; color:#333; line-height:1.6; }
   #route-info .ri-tip { font-size:0.7rem; color:#2e7d52; margin-top:5px; }
 
@@ -424,7 +427,7 @@
     <div id="route-info">
       <div id="ri-header" onclick="toggleRouteInfo()">
         <div id="ri-title"></div>
-        <span id="ri-toggle">▲</span>
+        <span id="ri-toggle">Hide</span>
       </div>
       <div id="ri-body">
         <div class="ri-cities" id="ri-cities"></div>
@@ -1273,7 +1276,7 @@ function toggleRouteInfo() {
   const toggle = document.getElementById('ri-toggle');
   const collapsed = body.style.display === 'none';
   body.style.display = collapsed ? '' : 'none';
-  toggle.textContent = collapsed ? '▲' : '▼';
+  toggle.textContent = collapsed ? 'Hide' : 'Show';
 }
 
 function showRouteInfo(route, routeData) {
@@ -1293,7 +1296,7 @@ function showRouteInfo(route, routeData) {
     :                    '✈️ Flights: HCMC in → Phu Quoc → Nha Trang → Da Nang → train to Hue → overnight train to Hanoi → Ha Long cruise → Hanoi out';
   // reset to expanded on each new route selection
   document.getElementById('ri-body').style.display = '';
-  document.getElementById('ri-toggle').textContent = '▲';
+  document.getElementById('ri-toggle').textContent = 'Hide';
   box.classList.add('visible');
 }
 
