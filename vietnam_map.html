@@ -196,13 +196,20 @@
   #route-info {
     position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
     background:rgba(255,255,255,0.95); border:1px solid #ddd; border-radius:10px;
-    padding:10px 16px; z-index:1000; max-width:520px; width:90%;
-    display:none; box-shadow:0 4px 20px rgba(0,0,0,0.2);
+    padding:0; z-index:1000; max-width:520px; width:90%;
+    display:none; box-shadow:0 4px 20px rgba(0,0,0,0.2); overflow:hidden;
   }
-  #route-info h4 { font-size:0.82rem; font-weight:700; color:#c8102e; margin-bottom:4px; }
+  #route-info.visible { display:block; }
+  #ri-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 12px; cursor:pointer; user-select:none;
+  }
+  #ri-header:hover { background:rgba(0,0,0,0.04); }
+  #ri-title { font-size:0.82rem; font-weight:700; color:#c8102e; flex:1; margin:0; }
+  #ri-toggle { font-size:0.75rem; color:#888; margin-left:8px; flex-shrink:0; }
+  #ri-body { padding:0 12px 10px; }
   #route-info .ri-cities { font-size:0.75rem; color:#333; line-height:1.6; }
   #route-info .ri-tip { font-size:0.7rem; color:#2e7d52; margin-top:5px; }
-  #route-info.visible { display:block; }
 
   /* City label markers */
   .city-label {
@@ -415,9 +422,14 @@
 
     <!-- Route info box -->
     <div id="route-info">
-      <h4 id="ri-title"></h4>
-      <div class="ri-cities" id="ri-cities"></div>
-      <div class="ri-tip" id="ri-tip"></div>
+      <div id="ri-header" onclick="toggleRouteInfo()">
+        <div id="ri-title"></div>
+        <span id="ri-toggle">▲</span>
+      </div>
+      <div id="ri-body">
+        <div class="ri-cities" id="ri-cities"></div>
+        <div class="ri-tip" id="ri-tip"></div>
+      </div>
     </div>
   </div><!-- /map-wrap -->
 
@@ -1256,10 +1268,18 @@ function getRouteColor(n) {
   return '#ce93d8';
 }
 
+function toggleRouteInfo() {
+  const body = document.getElementById('ri-body');
+  const toggle = document.getElementById('ri-toggle');
+  const collapsed = body.style.display === 'none';
+  body.style.display = collapsed ? '' : 'none';
+  toggle.textContent = collapsed ? '▲' : '▼';
+}
+
 function showRouteInfo(route, routeData) {
   const box = document.getElementById('route-info');
   const color = getRouteColor(route);
-  const cities = routeData.map((s,i) => `<b>${i+1}.</b> ${s.days}: <span style="color:${color}">${s.city}</span>`).join(' &nbsp;→&nbsp; ');
+  const cities = routeData.map((s,i) => '<b>' + (i+1) + '.</b> ' + s.days + ': <span style="color:' + color + '">' + s.city + '</span>').join(' &nbsp;→&nbsp; ');
   document.getElementById('ri-title').textContent =
     route === 'custom' ? '📋 Custom 15-Day Trip – Hanoi › Sapa › Ha Long › Da Nang › Ba Na Hills › Phu Quoc › HCMC'
     : route === 'my'   ? '⭐ My Trip – 12 Days: Hanoi › Sapa › Ha Long › Da Nang › Ba Na Hills › HCMC'
@@ -1271,6 +1291,9 @@ function showRouteInfo(route, routeData) {
     : route === 'my'   ? '✈️ Flights: Land Hanoi → domestic Hanoi→Da Nang → domestic Da Nang→HCMC. 2 domestic flights + 1 overnight train/bus to Sapa.'
     : route === 14     ? '✈️ Flights: HCMC in → Phu Quoc → Nha Trang → Da Nang → overnight train → Hanoi out (~4 domestic flights + 1 overnight train)'
     :                    '✈️ Flights: HCMC in → Phu Quoc → Nha Trang → Da Nang → train to Hue → overnight train to Hanoi → Ha Long cruise → Hanoi out';
+  // reset to expanded on each new route selection
+  document.getElementById('ri-body').style.display = '';
+  document.getElementById('ri-toggle').textContent = '▲';
   box.classList.add('visible');
 }
 
